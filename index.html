@@ -46,19 +46,9 @@
       transition: all 0.3s ease;
     }
     
-    /* СВІТЛОФОР КОЛЬОРІВ ДЛЯ КАРТОК */
-    .card.normal { 
-      border-color: #34c759; 
-      background-color: #f2fbf4; 
-    }
-    .card.warning { 
-      border-color: #ffcc00; 
-      background-color: #fffbeb; 
-    }
-    .card.danger-hour { 
-      border-color: #ff9500; 
-      background-color: #fff5e6; 
-    }
+    .card.normal { border-color: #34c759; background-color: #f2fbf4; }
+    .card.warning { border-color: #ffcc00; background-color: #fffbeb; }
+    .card.danger-hour { border-color: #ff9500; background-color: #fff5e6; }
     .card.danger-stop { 
       border-width: 4px;
       border-color: #ff1a1a; 
@@ -72,14 +62,9 @@
       align-items: center;
       margin-bottom: 4px;
     }
-    .pizzeria-num { 
-      font-size: 20px; 
-      font-weight: 900; 
-      color: #1c1c1e; 
-    }
+    .pizzeria-num { font-size: 20px; font-weight: 900; color: #1c1c1e; }
     .card.danger-stop .pizzeria-num { color: #b30000; }
     
-    /* УНІВЕРСАЛЬНИЙ СТИЛЬ ТАЙМЕРІВ */
     .timer {
       font-size: 11px;
       font-weight: bold;
@@ -88,13 +73,12 @@
       color: white;
       display: none;
     }
-    /* Червоний палахкотить при стопі */
     .card.danger-stop .timer { 
       display: inline-block; 
       background-color: #ff1a1a;
     }
-    /* Жовто-оранжевий горить при затримці більше 1 години */
-    .card.danger-hour .timer { 
+    /* Жовтий таймер вмикається ТІЛЬКИ якщо це затримка (НЕ тривога) */
+    .card.danger-hour.has-timer .timer { 
       display: inline-block; 
       background-color: #ff9500;
     }
@@ -149,21 +133,41 @@
       }
     }
     
+    // 🔥 ОНОВЛЕНИЙ РОЗУМНИЙ ПАРСЕР ДЛЯ ВСІХ ФОРМАТІВ ЧАСУ (ВКЛЮЧАЮЧИ ДВОКРАПКУ)
     function parseToMinutes(text) {
       if (!text) return 0;
-      let t = text.toUpperCase().trim();
+      let t = text.toUpperCase().replace(/\s+/g, '').trim();
       if (t.includes("СТОП")) return 9999;
       if (t.includes("ПРАЦЮЄ")) return 30; 
       
-      let hourMatch = t.match(/(\d+)\s*(?:ГОД|К|:)\s*(\d+)?/);
-      if (hourMatch) {
-        let hours = parseInt(hourMatch[1]) || 0;
-        let minutes = parseInt(hourMatch[2]) || 0;
+      // 1. Формат з двокрапкою типу 1:30
+      if (t.includes(":")) {
+        let parts = t.split(":");
+        let hours = parseInt(parts[0]) || 0;
+        let minutes = parseInt(parts[1]) || 0;
         return (hours * 60) + minutes;
       }
       
-      let minMatch = t.match(/(\d+)/);
-      if (minMatch) return parseInt(minMatch[1]);
+      // 2. Формат з текстовими годинами типу 1ГОД20ХВ
+      let hourMatch = t.match(/(\d+)(?:ГОД|H|К)/);
+      let minMatch = t.match(/(?:ГОД|H|К)?(\d+)(?:ХВ|М|MIN)?/);
+      
+      if (hourMatch) {
+        let hours = parseInt(hourMatch[1]) || 0;
+        let minutes = 0;
+        // Шукаємо хвилини після слова "ГОД"
+        let tail = t.split(/ГОД|H|К/)[1];
+        if (tail) {
+          let tailMin = tail.match(/(\d+)/);
+          if (tailMin) minutes = parseInt(tailMin[1]) || 0;
+        }
+        return (hours * 60) + minutes;
+      }
+      
+      // 3. Просто чисті хвилини типу 60ХВ
+      let pureMinMatch = t.match(/(\d+)/);
+      if (pureMinMatch) return parseInt(pureMinMatch[1]);
+      
       return 0;
     }
     
@@ -177,26 +181,29 @@
         let pickMin = parseToMinutes(item.pickup);
         
         let cardStatus = "normal";
+        let hasTimerClass = "";
         let dIcon = "🛵";
         let pIcon = "📦";
         
-        // Перевіряємо затримки для вибору кольору картки
         if (item.status === 'СТОП' || delivMin === 9999 || pickMin === 9999) {
           cardStatus = "danger-stop";
         } else if (delivMin >= 60 || pickMin >= 60) {
-          cardStatus = "danger-hour"; // Блідо-червоний + увімкнеться жовтий таймер
+          cardStatus = "danger-hour";
+          hasTimerClass = "has-timer"; // Дозволяємо таймер тільки для затримок
         } else if (delivMin >= 46 || pickMin >= 41) {
           cardStatus = "warning";
         }
         
+        // Особливий режим для повітряної тривоги
         if (item.reason.includes("тривога")) {
           cardStatus = "danger-hour";
+          hasTimerClass = ""; // ПРИМУСОВО ХОВАЄМО ТАЙМЕР НА ТРИВОЗІ
         }
         
         const reasonHtml = item.reason !== 'Норма' && item.reason !== 'Початок зміни (Авто)' ? `<div class="reason">⚠️ ${item.reason}</div>` : '';
         
         const cardHtml = `
-          <div class="card ${cardStatus}">
+          <div class="card ${cardStatus} ${hasTimerClass}">
             <div class="card-header">
               <span class="pizzeria-num">#${item.num}</span>
               <span class="timer">${item.minutes} хв</span>
