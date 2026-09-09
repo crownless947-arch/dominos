@@ -7,7 +7,8 @@
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background-color: #f4f5f7;
+      /* 🔥 ТЕМНИЙ СУЧАСНИЙ ФОН СТОРІНКИ */
+      background-color: #121214;
       margin: 0;
       padding: 12px;
       display: flex;
@@ -19,7 +20,8 @@
     .header {
       font-size: 16px;
       font-weight: 800;
-      color: #222;
+      /* БІЛИЙ КОНТРАСТНИЙ ТЕКСТ ШАПКИ */
+      color: #ffffff;
       margin-bottom: 15px;
       text-align: center;
       text-transform: uppercase;
@@ -33,23 +35,38 @@
       max-width: 440px;
     }
     .card {
-      background-color: white;
+      background-color: #ffffff;
       border-radius: 16px;
       padding: 12px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.03);
-      border: 2px solid #e4e6eb;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      border: 2px solid #2c2c2e;
       min-height: 120px;
       box-sizing: border-box;
       transition: all 0.3s ease;
     }
     
-    .card.normal { border-color: #34c759; background-color: #f2fbf4; }
-    .card.warning { border-color: #ffcc00; background-color: #fffbeb; }
-    .card.danger-hour { border-color: #ff9500; background-color: #fff5e6; }
-    .card.danger-stop { border-color: #ff3b30; background-color: #fff2f1; }
+    /* СВІТЛОФОР КОЛЬОРІВ ДЛЯ КАРТОК */
+    .card.normal { 
+      border-color: #34c759; 
+      background-color: #f2fbf4; 
+    }
+    .card.warning { 
+      border-color: #ffcc00; 
+      background-color: #fffbeb; 
+    }
+    .card.danger-hour { 
+      border-color: #ff9500; 
+      background-color: #fff5e6; 
+    }
+    /* 🔥 СУПЕР НАСИЧЕНИЙ ЧЕРВОНИЙ ДЛЯ СТОПУ */
+    .card.danger-stop { 
+      border-color: #e60000; 
+      background-color: #ffebe6; 
+      box-shadow: 0 0 12px rgba(230, 0, 0, 0.25);
+    }
     
     .card-header {
       display: flex;
@@ -57,25 +74,36 @@
       align-items: center;
       margin-bottom: 4px;
     }
-    .pizzeria-num { font-size: 20px; font-weight: 900; color: #1c1c1e; }
+    .pizzeria-num { 
+      font-size: 20px; 
+      font-weight: 900; 
+      color: #1c1c1e; 
+    }
+    /* СТИЛЬНИЙ ЧОРНИЙ КОНТРАСТНИЙ НОМЕР НА ЧЕРВОНІЙ КАРТЦІ */
+    .card.danger-stop .pizzeria-num {
+      color: #990000;
+    }
     .timer {
       font-size: 11px;
       font-weight: bold;
       padding: 2px 7px;
       border-radius: 20px;
-      background-color: #ff3b30;
+      background-color: #e60000;
       color: white;
       display: none;
     }
     .card.danger-stop .timer { display: inline-block; }
     .address {
       font-size: 12px;
-      color: #8e8e93;
+      color: #666666;
       font-weight: bold;
       margin-bottom: 8px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+    }
+    .card.danger-stop .address {
+      color: #802020;
     }
     .status-line {
       font-size: 13px;
@@ -89,12 +117,15 @@
     .icon { font-size: 14px; }
     .reason {
       font-size: 11px;
-      color: #dd7b00;
+      color: #cc6600;
       font-weight: bold;
       margin-top: 5px;
       line-height: 1.2;
     }
-    .loading { font-size: 14px; color: #666; margin-top: 20px; }
+    .card.danger-stop .reason {
+      color: #b30000;
+    }
+    .loading { font-size: 14px; color: #ffffff; margin-top: 20px; }
   </style>
   <script>
     const urlParams = new URLSearchParams(window.location.search);
@@ -122,13 +153,13 @@
       
       let hourMatch = t.match(/(\d+)\s*(?:ГОД|К|:)\s*(\d+)?/);
       if (hourMatch) {
-        let hours = parseInt(hourMatch[1]) || 0;
-        let minutes = parseInt(hourMatch[2]) || 0;
+        let hours = parseInt(hourMatch) || 0;
+        let minutes = parseInt(hourMatch) || 0;
         return (hours * 60) + minutes;
       }
       
       let minMatch = t.match(/(\d+)/);
-      if (minMatch) return parseInt(minMatch[1]);
+      if (minMatch) return parseInt(minMatch);
       return 0;
     }
     
@@ -154,12 +185,13 @@
         }
         
         if (item.reason.includes("тривога")) {
-          cardStatus = "danger-hour"; // Помаранчевий статус для тривоги
+          cardStatus = "danger-hour";
         }
         
-        if (cardStatus === "warning") { dIcon = "🟨🛵"; pIcon = "🟨📦"; }
-        else if (cardStatus === "danger-hour") { dIcon = "🟧🛵"; pIcon = "🟧📦"; }
-        else if (cardStatus === "danger-stop") { dIcon = "🟥🛵"; pIcon = "🟥📦"; }
+        // Прибрали квадратики, залишили чисті стильні емодзі
+        if (cardStatus === "warning") { dIcon = "🛵"; pIcon = "📦"; }
+        else if (cardStatus === "danger-hour") { dIcon = "🛵"; pIcon = "📦"; }
+        else if (cardStatus === "danger-stop") { dIcon = "🛵"; pIcon = "📦"; }
         
         const reasonHtml = item.reason !== 'Норма' && item.reason !== 'Початок зміни (Авто)' ? `<div class="reason">⚠️ ${item.reason}</div>` : '';
         
