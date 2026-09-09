@@ -46,9 +46,17 @@
       transition: all 0.3s ease;
     }
     
+    /* СВІТЛОФОР КОЛЬОРІВ ДЛЯ КАРТОК */
     .card.normal { border-color: #34c759; background-color: #f2fbf4; }
     .card.warning { border-color: #ffcc00; background-color: #fffbeb; }
     .card.danger-hour { border-color: #ff9500; background-color: #fff5e6; }
+    
+    /* 🔥 КРАСИВИЙ СИНІЙ КОЛІР ДЛЯ ПОВІТРЯНОЇ ТРИВОГИ */
+    .card.alarm-blue { 
+      border-color: #007aff; 
+      background-color: #ebf5ff; 
+    }
+    
     .card.danger-stop { 
       border-width: 4px;
       border-color: #ff1a1a; 
@@ -64,6 +72,7 @@
     }
     .pizzeria-num { font-size: 20px; font-weight: 900; color: #1c1c1e; }
     .card.danger-stop .pizzeria-num { color: #b30000; }
+    .card.alarm-blue .pizzeria-num { color: #004080; }
     
     .timer {
       font-size: 11px;
@@ -77,7 +86,7 @@
       display: inline-block; 
       background-color: #ff1a1a;
     }
-    /* Жовтий таймер вмикається ТІЛЬКИ якщо це затримка (НЕ тривога) */
+    /* Жовтий таймер вмикається тільки на затримках */
     .card.danger-hour.has-timer .timer { 
       display: inline-block; 
       background-color: #ff9500;
@@ -93,6 +102,7 @@
       text-overflow: ellipsis;
     }
     .card.danger-stop .address { color: #992626; }
+    .card.alarm-blue .address { color: #265c99; }
     
     .status-line {
       font-size: 13px;
@@ -113,6 +123,7 @@
       line-height: 1.2;
     }
     .card.danger-stop .reason { color: #cc0000; }
+    .card.alarm-blue .reason { color: #0053b3; }
     .loading { font-size: 14px; color: #ffffff; margin-top: 20px; }
   </style>
   <script>
@@ -133,14 +144,12 @@
       }
     }
     
-    // 🔥 ОНОВЛЕНИЙ РОЗУМНИЙ ПАРСЕР ДЛЯ ВСІХ ФОРМАТІВ ЧАСУ (ВКЛЮЧАЮЧИ ДВОКРАПКУ)
     function parseToMinutes(text) {
       if (!text) return 0;
       let t = text.toUpperCase().replace(/\s+/g, '').trim();
       if (t.includes("СТОП")) return 9999;
       if (t.includes("ПРАЦЮЄ")) return 30; 
       
-      // 1. Формат з двокрапкою типу 1:30
       if (t.includes(":")) {
         let parts = t.split(":");
         let hours = parseInt(parts[0]) || 0;
@@ -148,23 +157,18 @@
         return (hours * 60) + minutes;
       }
       
-      // 2. Формат з текстовими годинами типу 1ГОД20ХВ
       let hourMatch = t.match(/(\d+)(?:ГОД|H|К)/);
-      let minMatch = t.match(/(?:ГОД|H|К)?(\d+)(?:ХВ|М|MIN)?/);
-      
       if (hourMatch) {
         let hours = parseInt(hourMatch[1]) || 0;
         let minutes = 0;
-        // Шукаємо хвилини після слова "ГОД"
-        let tail = t.split(/ГОД|H|К/)[1];
-        if (tail) {
-          let tailMin = tail.match(/(\d+)/);
+        let tail = t.split(/ГОД|H|К/);
+        if (tail && tail[1]) {
+          let tailMin = tail[1].match(/(\d+)/);
           if (tailMin) minutes = parseInt(tailMin[1]) || 0;
         }
         return (hours * 60) + minutes;
       }
       
-      // 3. Просто чисті хвилини типу 60ХВ
       let pureMinMatch = t.match(/(\d+)/);
       if (pureMinMatch) return parseInt(pureMinMatch[1]);
       
@@ -185,19 +189,20 @@
         let dIcon = "🛵";
         let pIcon = "📦";
         
+        // Перевірка статусів
         if (item.status === 'СТОП' || delivMin === 9999 || pickMin === 9999) {
           cardStatus = "danger-stop";
         } else if (delivMin >= 60 || pickMin >= 60) {
           cardStatus = "danger-hour";
-          hasTimerClass = "has-timer"; // Дозволяємо таймер тільки для затримок
+          hasTimerClass = "has-timer"; // Увімкнути жовтий таймер
         } else if (delivMin >= 46 || pickMin >= 41) {
           cardStatus = "warning";
         }
         
-        // Особливий режим для повітряної тривоги
+        // 🔥 ФІЛЬТР ПОВІТРЯНОЇ ТРИВОГИ: Робимо синій колір і повністю прибираємо таймер
         if (item.reason.includes("тривога")) {
-          cardStatus = "danger-hour";
-          hasTimerClass = ""; // ПРИМУСОВО ХОВАЄМО ТАЙМЕР НА ТРИВОЗІ
+          cardStatus = "alarm-blue";
+          hasTimerClass = ""; // Жодних таймерів!
         }
         
         const reasonHtml = item.reason !== 'Норма' && item.reason !== 'Початок зміни (Авто)' ? `<div class="reason">⚠️ ${item.reason}</div>` : '';
