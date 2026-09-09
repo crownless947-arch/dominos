@@ -46,10 +46,19 @@
       transition: all 0.3s ease;
     }
     
-    .card.normal { border-color: #34c759; background-color: #f2fbf4; }
-    .card.warning { border-color: #ffcc00; background-color: #fffbeb; }
-    .card.danger-hour { border-color: #ff9500; background-color: #fff5e6; }
-    
+    /* СВІТЛОФОР КОЛЬОРІВ ДЛЯ КАРТОК */
+    .card.normal { 
+      border-color: #34c759; 
+      background-color: #f2fbf4; 
+    }
+    .card.warning { 
+      border-color: #ffcc00; 
+      background-color: #fffbeb; 
+    }
+    .card.danger-hour { 
+      border-color: #ff9500; 
+      background-color: #fff5e6; 
+    }
     .card.danger-stop { 
       border-width: 4px;
       border-color: #ff1a1a; 
@@ -63,19 +72,32 @@
       align-items: center;
       margin-bottom: 4px;
     }
-    .pizzeria-num { font-size: 20px; font-weight: 900; color: #1c1c1e; }
+    .pizzeria-num { 
+      font-size: 20px; 
+      font-weight: 900; 
+      color: #1c1c1e; 
+    }
     .card.danger-stop .pizzeria-num { color: #b30000; }
     
+    /* УНІВЕРСАЛЬНИЙ СТИЛЬ ТАЙМЕРІВ */
     .timer {
       font-size: 11px;
       font-weight: bold;
       padding: 2px 7px;
       border-radius: 20px;
-      background-color: #ff1a1a;
       color: white;
       display: none;
     }
-    .card.danger-stop .timer { display: inline-block; }
+    /* Червоний палахкотить при стопі */
+    .card.danger-stop .timer { 
+      display: inline-block; 
+      background-color: #ff1a1a;
+    }
+    /* Жовто-оранжевий горить при затримці більше 1 години */
+    .card.danger-hour .timer { 
+      display: inline-block; 
+      background-color: #ff9500;
+    }
     
     .address {
       font-size: 12px;
@@ -127,7 +149,6 @@
       }
     }
     
-    // Розумний підрахунок хвилин затримки
     function parseToMinutes(text) {
       if (!text) return 0;
       let t = text.toUpperCase().trim();
@@ -159,10 +180,11 @@
         let dIcon = "🛵";
         let pIcon = "📦";
         
+        // Перевіряємо затримки для вибору кольору картки
         if (item.status === 'СТОП' || delivMin === 9999 || pickMin === 9999) {
           cardStatus = "danger-stop";
         } else if (delivMin >= 60 || pickMin >= 60) {
-          cardStatus = "danger-hour";
+          cardStatus = "danger-hour"; // Блідо-червоний + увімкнеться жовтий таймер
         } else if (delivMin >= 46 || pickMin >= 41) {
           cardStatus = "warning";
         }
