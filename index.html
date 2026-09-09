@@ -7,7 +7,6 @@
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      /* 🔥 ТЕМНИЙ СУЧАСНИЙ ФОН */
       background-color: #121214;
       margin: 0;
       padding: 12px;
@@ -47,22 +46,12 @@
       transition: all 0.3s ease;
     }
     
-    /* СВІТЛОФОР КОЛЬОРІВ ДЛЯ КАРТОК */
-    .card.normal { 
-      border-color: #34c759; 
-      background-color: #f2fbf4; 
-    }
-    .card.warning { 
-      border-color: #ffcc00; 
-      background-color: #fffbeb; 
-    }
-    .card.danger-hour { 
-      border-color: #ff9500; 
-      background-color: #fff5e6; 
-    }
-    /* 🔥 ТОЛСТА ЖИРНА РАМКА ТА ЯСКРАВИЙ ЧЕРВОНИЙ ФОН ДЛЯ СТОПУ */
+    .card.normal { border-color: #34c759; background-color: #f2fbf4; }
+    .card.warning { border-color: #ffcc00; background-color: #fffbeb; }
+    .card.danger-hour { border-color: #ff9500; background-color: #fff5e6; }
+    
     .card.danger-stop { 
-      border-width: 4px; /* Збільшено вдвічі */
+      border-width: 4px;
       border-color: #ff1a1a; 
       background-color: #ffebe6; 
       box-shadow: 0 0 15px rgba(255, 26, 26, 0.4);
@@ -74,14 +63,9 @@
       align-items: center;
       margin-bottom: 4px;
     }
-    .pizzeria-num { 
-      font-size: 20px; 
-      font-weight: 900; 
-      color: #1c1c1e; 
-    }
-    .card.danger-stop .pizzeria-num {
-      color: #b30000;
-    }
+    .pizzeria-num { font-size: 20px; font-weight: 900; color: #1c1c1e; }
+    .card.danger-stop .pizzeria-num { color: #b30000; }
+    
     .timer {
       font-size: 11px;
       font-weight: bold;
@@ -102,9 +86,7 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    .card.danger-stop .address {
-      color: #992626;
-    }
+    .card.danger-stop .address { color: #992626; }
     
     .status-line {
       font-size: 13px;
@@ -124,9 +106,7 @@
       margin-top: 5px;
       line-height: 1.2;
     }
-    .card.danger-stop .reason {
-      color: #cc0000;
-    }
+    .card.danger-stop .reason { color: #cc0000; }
     .loading { font-size: 14px; color: #ffffff; margin-top: 20px; }
   </style>
   <script>
@@ -147,6 +127,7 @@
       }
     }
     
+    // Розумний підрахунок хвилин затримки
     function parseToMinutes(text) {
       if (!text) return 0;
       let t = text.toUpperCase().trim();
@@ -155,13 +136,13 @@
       
       let hourMatch = t.match(/(\d+)\s*(?:ГОД|К|:)\s*(\d+)?/);
       if (hourMatch) {
-        let hours = parseInt(hourMatch) || 0;
-        let minutes = parseInt(hourMatch) || 0;
+        let hours = parseInt(hourMatch[1]) || 0;
+        let minutes = parseInt(hourMatch[2]) || 0;
         return (hours * 60) + minutes;
       }
       
       let minMatch = t.match(/(\d+)/);
-      if (minMatch) return parseInt(minMatch);
+      if (minMatch) return parseInt(minMatch[1]);
       return 0;
     }
     
