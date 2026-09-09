@@ -43,15 +43,27 @@
       border: 2px solid #e4e6eb;
       min-height: 120px;
       box-sizing: border-box;
+      transition: all 0.3s ease;
     }
-    .card.stop {
-      border-color: #ff3b30;
-      background-color: #fff2f1;
-    }
-    .card.working {
+    
+    /* СВІТЛОФОР КОЛЬОРІВ ДЛЯ КАРТОК */
+    .card.normal {
       border-color: #34c759;
       background-color: #f2fbf4;
     }
+    .card.warning {
+      border-color: #ffcc00;
+      background-color: #fffbeb;
+    }
+    .card.danger-hour {
+      border-color: #ff9500;
+      background-color: #fff5e6;
+    }
+    .card.danger-stop {
+      border-color: #ff3b30;
+      background-color: #fff2f1;
+    }
+    
     .card-header {
       display: flex;
       justify-content: space-between;
@@ -64,7 +76,7 @@
       color: #1c1c1e;
     }
     .timer {
-      font-size: 12px;
+      font-size: 11px;
       font-weight: bold;
       padding: 2px 7px;
       border-radius: 20px;
@@ -72,7 +84,7 @@
       color: white;
       display: none;
     }
-    .card.stop .timer {
+    .card.danger-stop .timer {
       display: inline-block;
     }
     .address {
@@ -88,7 +100,13 @@
       font-size: 13px;
       font-weight: 600;
       color: #2c2c2e;
-      margin-bottom: 2px;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .icon {
+      font-size: 14px;
     }
     .reason {
       font-size: 11px;
@@ -104,7 +122,6 @@
     }
   </style>
   <script>
-    // Автоматически вытаскиваем ссылку на базу данных из адреса Mini App
     const urlParams = new URLSearchParams(window.location.search);
     const googleScriptUrl = urlParams.get('url');
 
@@ -122,24 +139,72 @@
       }
     }
     
+    // Функція перетворення будь-якого тексту тексту часу (30 хв, 1:20, СТОП) у чисті хвилини
+    def parseToMinutes(text) {
+      if (!text) return 0;
+      let t = text.toUpperCase().trim();
+      if (t.includes("СТОП")) return 9999; // Прапор стопу
+      
+      // Шукаємо формат годин та хвилин (наприклад, 1:20 або 1 год 20 хв)
+      let hourMatch = t.match(/(\d+)\s*(?:ГОД|К|:)\s*(\d+)?/);
+      if (hourMatch) {
+        let hours = parseInt(hourMatch[1]) || 0;
+        let minutes = parseInt(hourMatch[2]) || 0;
+        return (hours * 60) + minutes;
+      }
+      
+      // Шукаємо просто чисті хвилини (наприклад, 45 хв)
+      let minMatch = t.match(/(\d+)/);
+      if (minMatch) return parseInt(minMatch[1]);
+      
+      return 0;
+    }
+    
     function renderCards(data) {
       const grid = document.getElementById('grid');
       grid.innerHTML = '';
       document.getElementById('loading').style.display = 'none';
       
       data.forEach(function(item) {
-        const cardClass = item.status === 'СТОП' ? 'card stop' : 'card working';
-        const reasonHtml = item.status === 'СТОП' ? '<div class="reason">⚠️ ' + item.reason + '</div>' : '';
+        let delivMin = parseToMinutes(item.delivery);
+        let pickMin = parseToMinutes(item.pickup);
+        
+        // Визначаємо рівень критичності для картки та іконок
+        let cardStatus = "normal";
+        let dIcon = "🛵";
+        let pIcon = "📦"; // Коробка для піци за замовчуванням
+        
+        if (item.status === 'СТОП' || delivMin === 9999 || pickMin === 9999) {
+          cardStatus = "danger-stop"; // Сильний червоний
+        } else if (delivMin >= 60 || pickMin >= 60) {
+          cardStatus = "danger-hour"; // Легкий червоний (більше години)
+        } else if (delivMin >= 46 || pickMin >= 41) {
+          cardStatus = "warning"; // Жовтий попереджувальний
+        }
+        
+        // Кастомізація кольору іконок відповідно до статусу картки
+        if (cardStatus === "warning") {
+          dIcon = "🟨🛵";
+          pIcon = "🟨📦";
+        } else if (cardStatus === "danger-hour") {
+          dIcon = "🟧🛵";
+          pIcon = "🟧📦";
+        } else if (cardStatus === "danger-stop") {
+          dIcon = "🟥🛵";
+          pIcon = "🟥📦";
+        }
+        
+        const reasonHtml = item.status === 'СТОП' ? `<div class="reason">⚠️ ${item.reason}</div>` : '';
         
         const cardHtml = `
-          <div class="${cardClass}">
+          <div class="card ${cardStatus}">
             <div class="card-header">
               <span class="pizzeria-num">#${item.num}</span>
               <span class="timer">${item.minutes} хв</span>
             </div>
             <div class="address">${item.address}</div>
-            <div class="status-line">🛵 Дост: <b>${item.delivery}</b></div>
-            <div class="status-line">🥡 Сам: <b>${item.pickup}</b></div>
+            <div class="status-line"><span class="icon">${dIcon}</span> Дост: <b>${item.delivery}</b></div>
+            <div class="status-line"><span class="icon">${pIcon}</span> Сам: <b>${item.pickup}</b></div>
             ${reasonHtml}
           </div>
         `;
@@ -147,13 +212,12 @@
       });
     }
     
-    // Каждые 15 секунд приложение само обновляет квадратики без перезагрузки страницы
     setInterval(loadData, 15000);
     window.onload = loadData;
   </script>
 </head>
 <body>
-  <div class="header">🍕 Domino`s Моніторинг СТОПів</div>
+  <div class="header">🍕 DOMINO'S МОНІТОРИНГ СТОПІВ</div>
   <div id="loading" class="loading">⏳ Завантаження статусів піцерій...</div>
   <div class="grid" id="grid"></div>
 </body>
