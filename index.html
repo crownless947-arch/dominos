@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-select=none">
+  <title>Dominos Моніторинг</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      /* 🔥 ТЕМНИЙ СУЧАСНИЙ ФОН */
+      background-color: #121214;
+      margin: 0;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    .header {
+      font-size: 16px;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 15px;
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      width: 100%;
+      max-width: 440px;
+    }
+    .card {
+      background-color: #ffffff;
+      border-radius: 16px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      border: 2px solid #2c2c2e;
+      min-height: 120px;
+      box-sizing: border-box;
+      transition: all 0.3s ease;
+    }
+    
+    /* СВІТЛОФОР КОЛЬОРІВ ДЛЯ КАРТОК */
+    .card.normal { 
+      border-color: #34c759; 
+      background-color: #f2fbf4; 
+    }
+    .card.warning { 
+      border-color: #ffcc00; 
+      background-color: #fffbeb; 
+    }
+    .card.danger-hour { 
+      border-color: #ff9500; 
+      background-color: #fff5e6; 
+    }
+    /* 🔥 ТОЛСТА ЖИРНА РАМКА ТА ЯСКРАВИЙ ЧЕРВОНИЙ ФОН ДЛЯ СТОПУ */
+    .card.danger-stop { 
+      border-width: 4px; /* Збільшено вдвічі */
+      border-color: #ff1a1a; 
+      background-color: #ffebe6; 
+      box-shadow: 0 0 15px rgba(255, 26, 26, 0.4);
+    }
+    
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+    .pizzeria-num { 
+      font-size: 20px; 
+      font-weight: 900; 
+      color: #1c1c1e; 
+    }
+    .card.danger-stop .pizzeria-num {
+      color: #b30000;
+    }
+    .timer {
+      font-size: 11px;
+      font-weight: bold;
+      padding: 2px 7px;
+      border-radius: 20px;
+      background-color: #ff1a1a;
+      color: white;
+      display: none;
+    }
+    .card.danger-stop .timer { display: inline-block; }
+    
+    .address {
+      font-size: 12px;
+      color: #666666;
+      font-weight: bold;
+      margin-bottom: 8px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .card.danger-stop .address {
+      color: #992626;
+    }
+    
+    .status-line {
+      font-size: 13px;
+      font-weight: 600;
+      color: #2c2c2e;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .icon { font-size: 14px; }
+    
+    .reason {
+      font-size: 11px;
+      color: #cc6600;
+      font-weight: bold;
+      margin-top: 5px;
+      line-height: 1.2;
+    }
+    .card.danger-stop .reason {
+      color: #cc0000;
+    }
+    .loading { font-size: 14px; color: #ffffff; margin-top: 20px; }
+  </style>
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const googleScriptUrl = urlParams.get('url');
+
+    async function loadData() {
+      if (!googleScriptUrl) {
+        document.getElementById('loading').innerText = "❌ Помилка: Не вказано URL бази даних!";
+        return;
+      }
+      try {
+        const response = await fetch(googleScriptUrl);
+        const data = await response.json();
+        renderCards(data);
+      } catch (error) {
+        console.error(error);
+      }
+    }
+    
+    function parseToMinutes(text) {
+      if (!text) return 0;
+      let t = text.toUpperCase().trim();
+      if (t.includes("СТОП")) return 9999;
+      if (t.includes("ПРАЦЮЄ")) return 30; 
+      
+      let hourMatch = t.match(/(\d+)\s*(?:ГОД|К|:)\s*(\d+)?/);
+      if (hourMatch) {
+        let hours = parseInt(hourMatch) || 0;
+        let minutes = parseInt(hourMatch) || 0;
+        return (hours * 60) + minutes;
+      }
+      
+      let minMatch = t.match(/(\d+)/);
+      if (minMatch) return parseInt(minMatch);
+      return 0;
+    }
+    
+    function renderCards(data) {
+      const grid = document.getElementById('grid');
+      grid.innerHTML = '';
+      document.getElementById('loading').style.display = 'none';
+      
+      data.forEach(function(item) {
+        let delivMin = parseToMinutes(item.delivery);
+        let pickMin = parseToMinutes(item.pickup);
+        
+        let cardStatus = "normal";
+        let dIcon = "🛵";
+        let pIcon = "📦";
+        
+        if (item.status === 'СТОП' || delivMin === 9999 || pickMin === 9999) {
+          cardStatus = "danger-stop";
+        } else if (delivMin >= 60 || pickMin >= 60) {
+          cardStatus = "danger-hour";
+        } else if (delivMin >= 46 || pickMin >= 41) {
+          cardStatus = "warning";
+        }
+        
+        if (item.reason.includes("тривога")) {
+          cardStatus = "danger-hour";
+        }
+        
+        const reasonHtml = item.reason !== 'Норма' && item.reason !== 'Початок зміни (Авто)' ? `<div class="reason">⚠️ ${item.reason}</div>` : '';
+        
+        const cardHtml = `
+          <div class="card ${cardStatus}">
+            <div class="card-header">
+              <span class="pizzeria-num">#${item.num}</span>
+              <span class="timer">${item.minutes} хв</span>
+            </div>
+            <div class="address">${item.address}</div>
+            <div class="status-line"><span class="icon">${dIcon}</span> Дост: <b>${item.delivery}</b></div>
+            <div class="status-line"><span class="icon">${pIcon}</span> Сам: <b>${item.pickup}</b></div>
+            ${reasonHtml}
+          </div>
+        `;
+        grid.innerHTML += cardHtml;
+      });
+    }
+    
+    setInterval(loadData, 15000);
+    window.onload = loadData;
+  </script>
+</head>
+<body>
+  <div class="header">🍕 DOMINO'S МОНІТОРИНГ СТОПІВ</div>
+  <div id="loading" class="loading">⏳ Завантаження статусів піцерій...</div>
+  <div class="grid" id="grid"></div>
+</body>
+</html>
