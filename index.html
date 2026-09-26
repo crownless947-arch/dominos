@@ -1,235 +1,57 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-select=none">
-  <title>Dominos Моніторинг</title>
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background-color: #121214;
-      margin: 0;
-      padding: 12px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      -webkit-user-select: none;
-      user-select: none;
-    }
-    .header {
-      font-size: 16px;
-      font-weight: 800;
-      color: #ffffff;
-      margin-bottom: 15px;
-      text-align: center;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 10px;
-      width: 100%;
-      max-width: 440px;
-    }
-    .card {
-      background-color: #ffffff;
-      border-radius: 16px;
-      padding: 12px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-      border: 2px solid #2c2c2e;
-      min-height: 120px;
-      box-sizing: border-box;
-      transition: all 0.3s ease;
-    }
-    
-    /* СВІТЛОФОР КОЛЬОРІВ ДЛЯ КАРТОК */
-    .card.normal { border-color: #34c759; background-color: #f2fbf4; }
-    .card.warning { border-color: #ffcc00; background-color: #fffbeb; }
-    .card.danger-hour { border-color: #ff9500; background-color: #fff5e6; }
-    
-    /* 🔥 КРАСИВИЙ СИНІЙ КОЛІР ДЛЯ ПОВІТРЯНОЇ ТРИВОГИ */
-    .card.alarm-blue { 
-      border-color: #007aff; 
-      background-color: #ebf5ff; 
-    }
-    
-    .card.danger-stop { 
-      border-width: 4px;
-      border-color: #ff1a1a; 
-      background-color: #ffebe6; 
-      box-shadow: 0 0 15px rgba(255, 26, 26, 0.4);
-    }
-    
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 4px;
-    }
-    .pizzeria-num { font-size: 20px; font-weight: 900; color: #1c1c1e; }
-    .card.danger-stop .pizzeria-num { color: #b30000; }
-    .card.alarm-blue .pizzeria-num { color: #004080; }
-    
-    .timer {
-      font-size: 11px;
-      font-weight: bold;
-      padding: 2px 7px;
-      border-radius: 20px;
-      color: white;
-      display: none;
-    }
-    .card.danger-stop .timer { 
-      display: inline-block; 
-      background-color: #ff1a1a;
-    }
-    /* Жовтий таймер вмикається тільки на затримках */
-    .card.danger-hour.has-timer .timer { 
-      display: inline-block; 
-      background-color: #ff9500;
-    }
-    
-    .address {
-      font-size: 12px;
-      color: #666666;
-      font-weight: bold;
-      margin-bottom: 8px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .card.danger-stop .address { color: #992626; }
-    .card.alarm-blue .address { color: #265c99; }
-    
-    .status-line {
-      font-size: 13px;
-      font-weight: 600;
-      color: #2c2c2e;
-      margin-bottom: 4px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .icon { font-size: 14px; }
-    
-    .reason {
-      font-size: 11px;
-      color: #cc6600;
-      font-weight: bold;
-      margin-top: 5px;
-      line-height: 1.2;
-    }
-    .card.danger-stop .reason { color: #cc0000; }
-    .card.alarm-blue .reason { color: #0053b3; }
-    .loading { font-size: 14px; color: #ffffff; margin-top: 20px; }
-  </style>
-  <script>
-    const urlParams = new URLSearchParams(window.location.search);
-    const googleScriptUrl = urlParams.get('url');
-
-    async function loadData() {
-      if (!googleScriptUrl) {
-        document.getElementById('loading').innerText = "❌ Помилка: Не вказано URL бази даних!";
-        return;
-      }
-      try {
-        const response = await fetch(googleScriptUrl);
-        const data = await response.json();
-        renderCards(data);
-      } catch (error) {
-        console.error(error);
-      }
-    }
-    
-    function parseToMinutes(text) {
-      if (!text) return 0;
-      let t = text.toUpperCase().replace(/\s+/g, '').trim();
-      if (t.includes("СТОП")) return 9999;
-      if (t.includes("ПРАЦЮЄ")) return 30; 
-      
-      if (t.includes(":")) {
-        let parts = t.split(":");
-        let hours = parseInt(parts[0]) || 0;
-        let minutes = parseInt(parts[1]) || 0;
-        return (hours * 60) + minutes;
-      }
-      
-      let hourMatch = t.match(/(\d+)(?:ГОД|H|К)/);
-      if (hourMatch) {
-        let hours = parseInt(hourMatch[1]) || 0;
-        let minutes = 0;
-        let tail = t.split(/ГОД|H|К/);
-        if (tail && tail[1]) {
-          let tailMin = tail[1].match(/(\d+)/);
-          if (tailMin) minutes = parseInt(tailMin[1]) || 0;
-        }
-        return (hours * 60) + minutes;
-      }
-      
-      let pureMinMatch = t.match(/(\d+)/);
-      if (pureMinMatch) return parseInt(pureMinMatch[1]);
-      
-      return 0;
-    }
-    
-    function renderCards(data) {
-      const grid = document.getElementById('grid');
-      grid.innerHTML = '';
-      document.getElementById('loading').style.display = 'none';
-      
-      data.forEach(function(item) {
-        let delivMin = parseToMinutes(item.delivery);
-        let pickMin = parseToMinutes(item.pickup);
-        
-        let cardStatus = "normal";
-        let hasTimerClass = "";
-        let dIcon = "🛵";
-        let pIcon = "📦";
-        
-        // Перевірка статусів
-        if (item.status === 'СТОП' || delivMin === 9999 || pickMin === 9999) {
-          cardStatus = "danger-stop";
-        } else if (delivMin >= 60 || pickMin >= 60) {
-          cardStatus = "danger-hour";
-          hasTimerClass = "has-timer"; // Увімкнути жовтий таймер
-        } else if (delivMin >= 46 || pickMin >= 41) {
-          cardStatus = "warning";
-        }
-        
-        // 🔥 ФІЛЬТР ПОВІТРЯНОЇ ТРИВОГИ: Робимо синій колір і повністю прибираємо таймер
-        if (item.reason.includes("тривога")) {
-          cardStatus = "alarm-blue";
-          hasTimerClass = ""; // Жодних таймерів!
-        }
-        
-        const reasonHtml = item.reason !== 'Норма' && item.reason !== 'Початок зміни (Авто)' ? `<div class="reason">⚠️ ${item.reason}</div>` : '';
-        
-        const cardHtml = `
-          <div class="card ${cardStatus} ${hasTimerClass}">
-            <div class="card-header">
-              <span class="pizzeria-num">#${item.num}</span>
-              <span class="timer">${item.minutes} хв</span>
-            </div>
-            <div class="address">${item.address}</div>
-            <div class="status-line"><span class="icon">${dIcon}</span> Дост: <b>${item.delivery}</b></div>
-            <div class="status-line"><span class="icon">${pIcon}</span> Сам: <b>${item.pickup}</b></div>
-            ${reasonHtml}
-          </div>
-        `;
-        grid.innerHTML += cardHtml;
-      });
-    }
-    
-    setInterval(loadData, 15000);
-    window.onload = loadData;
-  </script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dominos Моніторинг</title>
+<style>
+*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#121214;color:#fff;margin:0;padding:12px;display:flex;flex-direction:column;align-items:center}
+h1{font-size:16px;text-align:center;margin:0 0 12px;font-weight:800}.connection{font-size:12px;color:#bbc3ce;max-width:440px;margin-bottom:12px;line-height:1.4}.connection.error{color:#ffb56a}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;width:100%;max-width:440px}
+.card{border:2px solid #34c759;background:#f2fbf4;border-radius:16px;padding:12px;min-height:120px;color:#222;overflow-wrap:anywhere}
+.card.warning{border-color:#fc0;background:#fffbeb}.card.danger-hour{border-color:#ff9500;background:#fff5e6}.card.alarm-blue{border-color:#007aff;background:#ebf5ff}.card.danger-stop{border:4px solid #ff1a1a;background:#ffebe6;box-shadow:0 0 15px #ff1a1a55}.card.unknown{border-color:#87909c;background:#e9edf2}
+.card-header{display:flex;align-items:center;justify-content:space-between;gap:4px}.num{font-size:20px;font-weight:900}.timer{font-size:11px;font-weight:bold;padding:2px 7px;border-radius:20px;background:#ff9500;color:white}.danger-stop .timer{background:#f11}.address{font-size:12px;font-weight:bold;color:#666;margin:4px 0 8px}.line{font-size:13px;margin-bottom:4px}.reason{font-size:11px;color:#9b4c00;font-weight:bold;margin-top:6px;white-space:pre-line}.alarm-blue .reason{color:#0053b3}.danger-stop .reason{color:#b00}.updated{font-size:10px;color:#62666c;margin-top:8px}
+</style>
 </head>
 <body>
-  <div class="header">🍕 DOMINO'S МОНІТОРИНГ СТОПІВ</div>
-  <div id="loading" class="loading">⏳ Завантаження статусів піцерій...</div>
-  <div class="grid" id="grid"></div>
+<h1>🍕 DOMINO'S МОНІТОРИНГ СТОПІВ</h1>
+<div id="connection" class="connection" role="status">⏳ Завантаження…</div>
+<div id="grid" class="grid"></div>
+<script>
+const source = new URLSearchParams(location.search).get('url');
+let loading = false;
+function el(tag,cls,text){const x=document.createElement(tag);x.className=cls;x.textContent=text;return x;}
+function note(text,bad){const x=document.getElementById('connection');x.textContent=text;x.className='connection'+(bad?' error':'');}
+function render(data){
+  const grid=document.getElementById('grid');const fragment=document.createDocumentFragment();
+  for(const item of data){
+    const kind=['normal','warning','danger-hour','danger-stop','alarm-blue','unknown'].includes(item.kind)?item.kind:'unknown';
+    const card=el('div','card '+kind,'');const head=el('div','card-header','');head.append(el('span','num','#'+item.num));
+    if(kind==='danger-hour'||kind==='danger-stop')head.append(el('span','timer',Math.max(0,Number(item.minutes)||0)+' хв'));
+    card.append(head,el('div','address',item.address),el('div','line','🛵 Дост: '+item.delivery),el('div','line','📦 Сам: '+item.pickup));
+    if(item.reason && !['Норма','Початок зміни (Авто)'].includes(item.reason))card.append(el('div','reason','⚠️ '+item.reason));
+    if(item.updated){const t=new Date(item.updated);if(Number.isFinite(t.getTime()))card.append(el('div','updated','Повідомлення: '+t.toLocaleString('uk-UA',{timeZone:'Europe/Kyiv',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})));}
+    fragment.append(card);
+  }
+  grid.replaceChildren(fragment);
+}
+async function loadData(){
+  if(loading)return;
+  if(!source){note('❌ У посиланні немає параметра url із адресою Google Apps Script.',true);return;}
+  loading=true;const abort=new AbortController();const timeout=setTimeout(()=>abort.abort(),12000);
+  try{
+    const u=new URL(source);if(u.protocol!=='https:')throw Error('Потрібне HTTPS-посилання');
+    u.searchParams.set('_',Date.now());const response=await fetch(u,{signal:abort.signal,cache:'no-store'});
+    if(!response.ok)throw Error('HTTP '+response.status);
+    const data=await response.json();if(!Array.isArray(data)||!data.length)throw Error(data.error||'Немає даних');
+    render(data);
+    const checked=Math.min(...data.map(x=>new Date(x.checked).getTime()||0));
+    if(Date.now()-checked>7*60000)note('⚠️ Telegram давно не перевірявся. Нижче — останні збережені дані.',true);
+    else note('● Дані отримано о '+new Date().toLocaleTimeString('uk-UA',{timeZone:'Europe/Kyiv'})+' · оновлення кожні 15 с',false);
+  }catch(e){note('⚠️ Не вдалося оновити дані. Показано останні отримані значення.',true);}
+  finally{clearTimeout(timeout);loading=false;}
+}
+loadData();setInterval(loadData,15000);
+</script>
 </body>
 </html>
