@@ -11,12 +11,18 @@ h1{font-size:16px;text-align:center;margin:0 0 12px;font-weight:800}.connection{
 .card{border:2px solid #34c759;background:#f2fbf4;border-radius:16px;padding:12px;min-height:120px;color:#222;overflow-wrap:anywhere}
 .card.warning{border-color:#fc0;background:#fffbeb}.card.danger-hour{border-color:#ff9500;background:#fff5e6}.card.alarm-blue{border-color:#007aff;background:#ebf5ff}.card.danger-stop{border:4px solid #ff1a1a;background:#ffebe6;box-shadow:0 0 15px #ff1a1a55}.card.unknown{border-color:#87909c;background:#e9edf2}
 .card-header{display:flex;align-items:center;justify-content:space-between;gap:4px}.num{font-size:20px;font-weight:900}.timer{font-size:11px;font-weight:bold;padding:2px 7px;border-radius:20px;background:#ff9500;color:white}.danger-stop .timer{background:#f11}.address{font-size:12px;font-weight:bold;color:#666;margin:4px 0 8px}.line{font-size:13px;margin-bottom:4px}.reason{font-size:11px;color:#9b4c00;font-weight:bold;margin-top:6px;white-space:pre-line}.alarm-blue .reason{color:#0053b3}.danger-stop .reason{color:#b00}.updated{font-size:10px;color:#62666c;margin-top:8px}
+
+.report{width:100%;max-width:440px;margin-top:24px;padding:16px;background:#1d1d21;border:1px solid #35353b;border-radius:16px}
+.report h2{font-size:17px;margin:0 0 8px}.report p{font-size:12px;color:#bbc3ce;line-height:1.5}
+.report table{width:100%;border-collapse:collapse;font-size:13px}.report th,.report td{padding:10px 4px;border-bottom:1px solid #35353b;text-align:left}.report th:last-child,.report td:last-child{text-align:right;white-space:nowrap}.report .stopped{color:#ffb56a;font-weight:700}
+@media(min-width:760px){.grid{grid-template-columns:repeat(3,minmax(0,1fr));max-width:960px;gap:14px}.report,.connection{max-width:960px}.card{padding:16px}body{padding:24px}}
 </style>
 </head>
 <body>
 <h1>🍕 DOMINO'S МОНІТОРИНГ СТОПІВ</h1>
 <div id="connection" class="connection" role="status">⏳ Завантаження…</div>
 <div id="grid" class="grid"></div>
+<section id="report" class="report" aria-label="Звіт про стопи за вчора"></section>
 <script>
 const source = new URLSearchParams(location.search).get('url');
 let loading = false;
@@ -35,6 +41,20 @@ function render(data){
   }
   grid.replaceChildren(fragment);
 }
+function renderReport(data){
+  const box=document.getElementById('report');box.replaceChildren();
+  const today=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Kyiv'});
+  const parts=today.split('-').map(Number);
+  const date=new Date(Date.UTC(parts[0],parts[1]-1,parts[2]-1)).toISOString().slice(0,10);
+  box.append(el('h2','','Стопи за вчора · '+date.split('-').reverse().join('.')));
+  const complete=data.length===9 && data.every(x=>x.yesterday && x.yesterday.date===date && Number.isFinite(x.yesterday.seconds) && x.yesterday.seconds>=0);
+  if(!complete){box.append(el('p','','Звіт ще не готовий. Потрібне оновлення бота та Google Script; після запуску бот завантажить доступні повідомлення за вчора.'));return;}
+  box.append(el('p','','Сумарний час явного СТОП доставки або самовивозу, включно зі стопами через тривогу. Одночасні стопи рахуються один раз. Межі доби: 00:00–00:00, Київ.'));
+  const table=el('table','','');const head=el('thead','','');const hr=el('tr','','');hr.append(el('th','','Піцерія'),el('th','','Час на стопі'));head.append(hr);table.append(head);
+  const body=el('tbody','','');
+  for(const item of data){const sec=item.yesterday.seconds;const mins=Math.floor(sec/60);const duration=sec===0?'0 хв':mins===0?'менше 1 хв':Math.floor(mins/60)+' год '+String(mins%60).padStart(2,'0')+' хв';const row=el('tr','','');row.append(el('td','','#'+item.num+' · '+item.address),el('td',sec?'stopped':'',duration));body.append(row);}
+  table.append(body);box.append(table,el('p','','За доступними повідомленнями Telegram. 0 хв означає, що явного стопу не зафіксовано. Видалені повідомлення та зміни без повідомлень не враховані. О 00:00 стоп завершується відповідно до щоденного скидання.'));
+}
 async function loadData(){
   if(loading)return;
   if(!source){note('❌ У посиланні немає параметра url із адресою Google Apps Script.',true);return;}
@@ -44,7 +64,7 @@ async function loadData(){
     u.searchParams.set('_',Date.now());const response=await fetch(u,{signal:abort.signal,cache:'no-store'});
     if(!response.ok)throw Error('HTTP '+response.status);
     const data=await response.json();if(!Array.isArray(data)||!data.length)throw Error(data.error||'Немає даних');
-    render(data);
+    render(data);renderReport(data);
     const checked=Math.min(...data.map(x=>new Date(x.checked).getTime()||0));
     if(Date.now()-checked>7*60000)note('⚠️ Telegram давно не перевірявся. Нижче — останні збережені дані.',true);
     else note('● Дані отримано о '+new Date().toLocaleTimeString('uk-UA',{timeZone:'Europe/Kyiv'})+' · оновлення кожні 15 с',false);
