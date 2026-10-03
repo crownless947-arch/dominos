@@ -289,6 +289,32 @@
     .sk-line{height:10px;border-radius:6px;background:rgba(255,255,255,.055);margin-bottom:10px}
     .sk-big{height:54px;border-radius:14px;background:rgba(255,255,255,.045);margin-top:15px}
 
+    .yesterday{
+      margin-top:26px;border:1px solid var(--line);border-radius:26px;padding:20px;
+      background:linear-gradient(145deg,rgba(18,28,47,.82),rgba(9,16,29,.88));
+      box-shadow:0 18px 48px rgba(0,0,0,.18);
+    }
+    .yesterday-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-end;margin-bottom:14px}
+    .yesterday-kicker{font-size:10px;font-weight:850;letter-spacing:.14em;text-transform:uppercase;color:#83b7ff}
+    .yesterday-title{font-size:20px;font-weight:900;letter-spacing:-.025em;margin-top:5px}
+    .yesterday-date{font-size:10px;color:var(--muted);white-space:nowrap}
+    .y-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+    .y-stat{border:1px solid var(--line);border-radius:17px;padding:14px;background:rgba(255,255,255,.028)}
+    .y-stat-label{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;font-weight:750}
+    .y-stat-value{font-size:25px;font-weight:900;letter-spacing:-.04em;margin-top:7px;font-variant-numeric:tabular-nums}
+    .y-stat-note{font-size:9px;color:var(--muted-2);margin-top:2px}
+    .y-ranking{margin-top:14px;border:1px solid var(--line);border-radius:18px;overflow:hidden;background:rgba(0,0,0,.10)}
+    .y-ranking-head{display:grid;grid-template-columns:42px minmax(0,1fr) 90px 82px;gap:8px;padding:10px 12px;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.07em;border-bottom:1px solid var(--line)}
+    .y-row{display:grid;grid-template-columns:42px minmax(0,1fr) 90px 82px;gap:8px;align-items:center;padding:11px 12px;border-bottom:1px solid rgba(255,255,255,.045);font-size:11px}
+    .y-row:last-child{border-bottom:0}
+    .y-rank{font-weight:900;color:#8fa0b7}
+    .y-place{min-width:0}
+    .y-place strong{display:block;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .y-place span{display:block;color:var(--muted);font-size:9px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .y-badge{justify-self:start;border-radius:999px;padding:5px 8px;background:rgba(255,189,61,.08);border:1px solid rgba(255,189,61,.12);color:#ffd67c;font-size:9px;font-weight:800}
+    .y-max{text-align:right;font-weight:850;font-variant-numeric:tabular-nums}
+    .y-empty{padding:22px;text-align:center;color:var(--muted);font-size:11px}
+
     .footer{
       display:flex;justify-content:space-between;gap:16px;align-items:center;margin:22px 2px 0;
       color:#4c596e;font-size:9px;text-transform:uppercase;letter-spacing:.09em
@@ -336,6 +362,13 @@
       .footer span:last-child{display:block}
       .setup-form{flex-direction:column}
       .setup-form .retry{margin-top:0}
+      .yesterday{padding:15px;border-radius:22px}
+      .y-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .yesterday-head{align-items:flex-start}
+      .y-ranking-head{grid-template-columns:32px minmax(0,1fr) 72px}
+      .y-ranking-head span:nth-child(3){display:none}
+      .y-row{grid-template-columns:32px minmax(0,1fr) 72px}
+      .y-row .y-badge{display:none}
     }
     @media (max-width:390px){
       .brand-sub{display:none}
@@ -404,12 +437,12 @@
         <article class="kpi critical">
           <div class="kpi-label"><span class="kpi-dot"></span>Критично</div>
           <div class="kpi-value" id="kpiCritical">—</div>
-          <div class="kpi-note">60+ хв / тривога</div>
+          <div class="kpi-note">тільки ресторани на СТОПІ</div>
         </article>
         <article class="kpi stop">
-          <div class="kpi-label"><span class="kpi-dot"></span>СТОП</div>
-          <div class="kpi-value" id="kpiStop">—</div>
-          <div class="kpi-note">операційно зупинені</div>
+          <div class="kpi-label"><span class="kpi-dot"></span>Тривога</div>
+          <div class="kpi-value" id="kpiAlarm">—</div>
+          <div class="kpi-note">активні тривоги</div>
         </article>
       </div>
 
@@ -446,9 +479,8 @@
     <div class="filters" id="filters">
       <button class="chip active" data-filter="all">Всі <span class="chip-badge" data-count="all">0</span></button>
       <button class="chip" data-filter="normal">Норма <span class="chip-badge" data-count="normal">0</span></button>
-      <button class="chip" data-filter="warning">Увага <span class="chip-badge" data-count="warning">0</span></button>
-      <button class="chip" data-filter="critical">Критично <span class="chip-badge" data-count="critical">0</span></button>
-      <button class="chip" data-filter="stop">СТОП <span class="chip-badge" data-count="stop">0</span></button>
+      <button class="chip" data-filter="warning">Потребує уваги <span class="chip-badge" data-count="warning">0</span></button>
+      <button class="chip" data-filter="stop">Критично · СТОП <span class="chip-badge" data-count="stop">0</span></button>
       <button class="chip" data-filter="alarm">Тривога <span class="chip-badge" data-count="alarm">0</span></button>
     </div>
 
@@ -464,6 +496,44 @@
       <div class="skeleton"><div class="sk-line" style="width:45%"></div><div class="sk-line" style="width:70%"></div><div class="sk-big"></div><div class="sk-big"></div></div>
       <div class="skeleton"><div class="sk-line" style="width:55%"></div><div class="sk-line" style="width:62%"></div><div class="sk-big"></div><div class="sk-big"></div></div>
       <div class="skeleton"><div class="sk-line" style="width:38%"></div><div class="sk-line" style="width:75%"></div><div class="sk-big"></div><div class="sk-big"></div></div>
+    </section>
+
+    <section class="yesterday" id="yesterdaySection">
+      <div class="yesterday-head">
+        <div>
+          <div class="yesterday-kicker">Daily performance</div>
+          <div class="yesterday-title">Статистика за вчора</div>
+        </div>
+        <div class="yesterday-date" id="yesterdayDate">—</div>
+      </div>
+
+      <div class="y-stats">
+        <div class="y-stat">
+          <div class="y-stat-label">Записів</div>
+          <div class="y-stat-value" id="yRecords">—</div>
+          <div class="y-stat-note">за весь день</div>
+        </div>
+        <div class="y-stat">
+          <div class="y-stat-label">Потребували уваги</div>
+          <div class="y-stat-value" id="yAttention">—</div>
+          <div class="y-stat-note">55+ хв без СТОПу</div>
+        </div>
+        <div class="y-stat">
+          <div class="y-stat-label">СТОП</div>
+          <div class="y-stat-value" id="yStops">—</div>
+          <div class="y-stat-note">критичні записи</div>
+        </div>
+        <div class="y-stat">
+          <div class="y-stat-label">Макс. доставка</div>
+          <div class="y-stat-value" id="yMaxDelivery">—</div>
+          <div class="y-stat-note">піковий час за день</div>
+        </div>
+      </div>
+
+      <div class="y-ranking" id="yRanking">
+        <div class="y-ranking-head"><span>#</span><span>Ресторан</span><span>Статус</span><span style="text-align:right">Макс. час</span></div>
+        <div class="y-empty">Завантаження статистики…</div>
+      </div>
     </section>
 
     <footer class="footer">
@@ -484,6 +554,7 @@
 
       const state = {
         rows: [],
+        yesterdayRows: [],
         filter: "all",
         query: "",
         sort: "risk",
@@ -547,10 +618,12 @@
         const statusRaw = String(row.status ?? "").trim();
         const reasonRaw = String(row.reason ?? "").trim();
 
-        const isStop = statusRaw.toUpperCase().includes("СТОП");
+        const isStop = statusRaw.toUpperCase().includes("СТОП") || String(row.delivery ?? "").toUpperCase().includes("СТОП") || String(row.pickup ?? "").toUpperCase().includes("СТОП");
         const isAlarm = reasonRaw.toLowerCase().includes("тривог");
-        const isHour = deliveryMin >= 60;
-        const isWarning = !isStop && !isAlarm && !isHour && (deliveryMin >= 46 || pickupMin >= 41);
+        // Бізнес-логіка: до 55 хв — норма; 55+ хв — потребує уваги.
+        // Критичний статус зарезервований тільки для СТОПу.
+        const isHour = false;
+        const isWarning = !isStop && !isAlarm && deliveryMin >= 55;
 
         let uiClass = "normal";
         let group = "normal";
@@ -572,19 +645,12 @@
           label = "Тривога";
           issueTitle = "Повітряна тривога";
           icon = icons.alarm;
-          risk = 4;
-        } else if (isHour) {
-          uiClass = "danger-hour";
-          group = "critical";
-          label = "Критично";
-          issueTitle = "Доставка 60+ хв";
-          icon = icons.warning;
-          risk = 4;
+          risk = 3;
         } else if (isWarning) {
           uiClass = "warning";
           group = "warning";
-          label = "Увага";
-          issueTitle = "Підвищений час";
+          label = "Потребує уваги";
+          issueTitle = deliveryMin > 90 ? "Доставка понад 1:30" : "Доставка 55–90 хв";
           icon = icons.pulse;
           risk = 2;
         }
@@ -616,8 +682,7 @@
 
       function metricColor(type, value) {
         if (type === "delivery") {
-          if (value >= 60) return "var(--red)";
-          if (value >= 46) return "var(--yellow)";
+          if (value >= 55) return "var(--yellow)";
           return "var(--green)";
         }
         if (value >= 41) return "var(--yellow)";
@@ -698,10 +763,121 @@
           all: rows.length,
           normal: rows.filter(r => r.group === "normal").length,
           warning: rows.filter(r => r.group === "warning").length,
-          critical: rows.filter(r => r.group === "critical" || r.group === "alarm").length,
+          critical: rows.filter(r => r.group === "stop").length,
           stop: rows.filter(r => r.group === "stop").length,
           alarm: rows.filter(r => r.group === "alarm").length
         };
+      }
+
+      function parseRowDate(row) {
+        const raw = row?.date ?? row?.datetime ?? row?.timestamp ?? row?.time ?? "";
+        if (!raw) return null;
+        if (raw instanceof Date && !Number.isNaN(raw.getTime())) return raw;
+        const s = String(raw).trim();
+        const isoLike = s.includes("T") ? s : s.replace(" ", "T");
+        const d = new Date(isoLike);
+        if (!Number.isNaN(d.getTime())) return d;
+        const m = s.match(/(\d{4})[-./](\d{1,2})[-./](\d{1,2})/);
+        if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+        const ua = s.match(/(\d{1,2})[./-](\d{1,2})[./-](\d{4})/);
+        if (ua) return new Date(Number(ua[3]), Number(ua[2]) - 1, Number(ua[1]));
+        return null;
+      }
+
+      function dayKey(d) {
+        if (!(d instanceof Date) || Number.isNaN(d.getTime())) return "";
+        const y = d.getFullYear();
+        const m = String(d.getMonth()+1).padStart(2,"0");
+        const day = String(d.getDate()).padStart(2,"0");
+        return `${y}-${m}-${day}`;
+      }
+
+      function yesterdayKey() {
+        const d = new Date();
+        d.setDate(d.getDate()-1);
+        return dayKey(d);
+      }
+
+      function latestPerRestaurant(rows) {
+        const map = new Map();
+        for (const r of rows) {
+          const key = String(r.num ?? r.number ?? r.restaurant ?? r.address ?? Math.random());
+          const prev = map.get(key);
+          const rd = parseRowDate(r)?.getTime() ?? 0;
+          const pd = prev ? (parseRowDate(prev)?.getTime() ?? 0) : -1;
+          if (!prev || rd >= pd) map.set(key, r);
+        }
+        return [...map.values()];
+      }
+
+      function extractRows(payload) {
+        const explicitLive = payload && !Array.isArray(payload)
+          ? (payload.live ?? payload.current ?? payload.restaurants ?? payload.data)
+          : null;
+        const base = Array.isArray(payload) ? payload : (Array.isArray(explicitLive) ? explicitLive : []);
+
+        const explicitYesterday = payload && !Array.isArray(payload)
+          ? (payload.yesterday ?? payload.history ?? payload.archive ?? payload.events ?? payload?.stats?.yesterday ?? payload?.statistics?.yesterday)
+          : null;
+
+        let yesterday = Array.isArray(explicitYesterday) ? explicitYesterday : [];
+        if (!yesterday.length) {
+          yesterday = base.filter(r => dayKey(parseRowDate(r)) === yesterdayKey());
+        }
+
+        let live = base;
+        const dated = base.filter(r => parseRowDate(r));
+        if (dated.length && new Set(dated.map(r => dayKey(parseRowDate(r)))).size > 1) {
+          live = latestPerRestaurant(base);
+        }
+        return {live, yesterday};
+      }
+
+      function renderYesterday() {
+        const rows = state.yesterdayRows.map(normalize);
+        const yd = new Date();
+        yd.setDate(yd.getDate()-1);
+        $("#yesterdayDate").textContent = yd.toLocaleDateString("uk-UA",{day:"2-digit",month:"long",year:"numeric"});
+
+        $("#yRecords").textContent = rows.length || "0";
+        const attention = rows.filter(r => !r.isStop && !r.isAlarm && r.deliveryMin >= 55);
+        const stops = rows.filter(r => r.isStop);
+        const maxDelivery = rows.reduce((m,r) => Math.max(m, r.deliveryMin < 9000 ? r.deliveryMin : 0), 0);
+        $("#yAttention").textContent = attention.length;
+        $("#yStops").textContent = stops.length;
+        $("#yMaxDelivery").textContent = maxDelivery ? `${maxDelivery} хв` : "—";
+
+        if (!rows.length) {
+          $("#yRanking").innerHTML = `<div class="y-empty">За вчора немає записів у відповіді API.</div>`;
+          return;
+        }
+
+        const byRestaurant = new Map();
+        rows.forEach(r => {
+          const key = String(r.num ?? r.address ?? "—");
+          if (!byRestaurant.has(key)) byRestaurant.set(key,{num:r.num,address:r.address,attention:0,stops:0,alarms:0,max:0,score:0});
+          const x = byRestaurant.get(key);
+          if (r.isStop) {x.stops++; x.score += 6;}
+          else if (r.isAlarm) {x.alarms++; x.score += 3;}
+          else if (r.deliveryMin >= 55) {x.attention++; x.score += 2;}
+          x.max = Math.max(x.max, r.deliveryMin < 9000 ? r.deliveryMin : 0);
+        });
+
+        const ranking = [...byRestaurant.values()]
+          .sort((a,b) => b.score-a.score || b.max-a.max)
+          .slice(0,8);
+
+        const header = `<div class="y-ranking-head"><span>#</span><span>Ресторан</span><span>Статус</span><span style="text-align:right">Макс. час</span></div>`;
+        const body = ranking.map((r,i) => {
+          const status = r.stops ? `${r.stops} СТОП` : r.alarms ? `${r.alarms} трив.` : r.attention ? `${r.attention} увага` : "Норма";
+          return `<div class="y-row">
+            <div class="y-rank">${String(i+1).padStart(2,"0")}</div>
+            <div class="y-place"><strong>${escapeHtml(r.num || "—")} · ${escapeHtml(r.address || "Ресторан")}</strong><span>${r.attention} увага · ${r.stops} стоп · ${r.alarms} тривога</span></div>
+            <div class="y-badge">${escapeHtml(status)}</div>
+            <div class="y-max">${r.max ? `${r.max} хв` : "—"}</div>
+          </div>`;
+        }).join("");
+        $("#yRanking").innerHTML = header + body;
       }
 
       function updateSummary() {
@@ -709,15 +885,15 @@
         $("#kpiTotal").textContent = c.all;
         $("#kpiNormal").textContent = c.normal;
         $("#kpiWarning").textContent = c.warning;
-        $("#kpiCritical").textContent = c.critical;
-        $("#kpiStop").textContent = c.stop;
+        $("#kpiCritical").textContent = c.stop;
+        $("#kpiAlarm").textContent = c.alarm;
 
         $$("[data-count]").forEach(el => {
           const key = el.dataset.count;
           el.textContent = c[key] ?? 0;
         });
 
-        const attention = state.rows.filter(r => r.risk >= 4 || r.group === "stop");
+        const attention = state.rows.filter(r => r.group === "stop" || r.group === "alarm" || r.group === "warning");
         const strip = $("#criticalStrip");
         if (attention.length) {
           const top = [...attention]
@@ -738,8 +914,7 @@
         let rows = state.rows.filter(r => {
           const filterOk =
             state.filter === "all" ||
-            r.group === state.filter ||
-            (state.filter === "critical" && (r.group === "critical" || r.group === "alarm"));
+            r.group === state.filter;
           if (!filterOk) return false;
           if (!q) return true;
           return [r.num, r.address, r.reasonRaw, r.statusRaw]
@@ -837,18 +1012,21 @@
         if (state.loading) return;
         if (!googleScriptUrl) {
           renderSetup();
+          renderYesterday();
           return;
         }
 
         setLoading(true);
         try {
           const payload = await fetchJson(googleScriptUrl);
-          const data = Array.isArray(payload) ? payload : (Array.isArray(payload?.data) ? payload.data : []);
-          state.rows = data.map(normalize);
+          const extracted = extractRows(payload);
+          state.rows = extracted.live.map(normalize);
+          state.yesterdayRows = extracted.yesterday;
           state.lastSuccess = new Date();
           $("#lastUpdated").textContent = state.lastSuccess.toLocaleTimeString("uk-UA",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
           setOnline();
           render();
+          renderYesterday();
           if (manual) showToast(`Оновлено · ${state.rows.length} ресторанів`);
         } catch (err) {
           const text = err?.name === "AbortError"
