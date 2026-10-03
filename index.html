@@ -509,29 +509,29 @@
 
       <div class="y-stats">
         <div class="y-stat">
-          <div class="y-stat-label">Записів</div>
+          <div class="y-stat-label">Ресторанів</div>
           <div class="y-stat-value" id="yRecords">—</div>
-          <div class="y-stat-note">за весь день</div>
+          <div class="y-stat-note">у звіті за день</div>
         </div>
         <div class="y-stat">
-          <div class="y-stat-label">Потребували уваги</div>
+          <div class="y-stat-label">Були на СТОПІ</div>
           <div class="y-stat-value" id="yAttention">—</div>
-          <div class="y-stat-note">55+ хв без СТОПу</div>
+          <div class="y-stat-note">ресторанів із часом &gt; 0</div>
         </div>
         <div class="y-stat">
-          <div class="y-stat-label">СТОП</div>
+          <div class="y-stat-label">Час на СТОПІ</div>
           <div class="y-stat-value" id="yStops">—</div>
-          <div class="y-stat-note">критичні записи</div>
+          <div class="y-stat-note">сумарно за день</div>
         </div>
         <div class="y-stat">
-          <div class="y-stat-label">Макс. доставка</div>
+          <div class="y-stat-label">Найдовший СТОП</div>
           <div class="y-stat-value" id="yMaxDelivery">—</div>
-          <div class="y-stat-note">піковий час за день</div>
+          <div class="y-stat-note">максимум по ресторану</div>
         </div>
       </div>
 
       <div class="y-ranking" id="yRanking">
-        <div class="y-ranking-head"><span>#</span><span>Ресторан</span><span>Статус</span><span style="text-align:right">Макс. час</span></div>
+        <div class="y-ranking-head"><span>#</span><span>Ресторан</span><span>Стан звіту</span><span style="text-align:right">На СТОПІ</span></div>
         <div class="y-empty">Завантаження статистики…</div>
       </div>
     </section>
@@ -650,7 +650,7 @@
           uiClass = "warning";
           group = "warning";
           label = "Потребує уваги";
-          issueTitle = deliveryMin > 90 ? "Доставка понад 1:30" : "Доставка 55–90 хв";
+          issueTitle = deliveryMin > 90 ? "Потребує уваги · понад 1:30" : "Потребує уваги · 55–90 хв";
           icon = icons.pulse;
           risk = 2;
         }
@@ -769,8 +769,25 @@
         };
       }
 
-      function parseRowDate(row) {
-        const raw = row?.date ?? row?.datetime ?? row?.timestamp ?? row?.time ?? "";
+      function firstValue(obj, keys) {
+        if (!obj || typeof obj !== "object") return undefined;
+        for (const key of keys) {
+          if (obj[key] !== undefined && obj[key] !== null && obj[key] !== "") return obj[key];
+        }
+        const normalized = Object.fromEntries(
+          Object.entries(obj).map(([k,v]) => [
+            String(k).toLowerCase().replace(/[\s_\-./]+/g,"").replace(/[’']/g,""),
+            v
+          ])
+        );
+        for (const key of keys) {
+          const nk = String(key).toLowerCase().replace(/[\s_\-./]+/g,"").replace(/[’']/g,"");
+          if (normalized[nk] !== undefined && normalized[nk] !== null && normalized[nk] !== "") return normalized[nk];
+        }
+        return undefined;
+      }
+
+      function parseDateValue(raw) {
         if (!raw) return null;
         if (raw instanceof Date && !Number.isNaN(raw.getTime())) return raw;
         const s = String(raw).trim();
@@ -782,6 +799,13 @@
         const ua = s.match(/(\d{1,2})[./-](\d{1,2})[./-](\d{4})/);
         if (ua) return new Date(Number(ua[3]), Number(ua[2]) - 1, Number(ua[1]));
         return null;
+      }
+
+      function parseRowDate(row) {
+        return parseDateValue(firstValue(row, [
+          "reportDate","report_date","dateReport","date_report","Дата звіту","дата звіту",
+          "date","datetime","timestamp","time","Дата","Час повідомлення"
+        ]));
       }
 
       function dayKey(d) {
@@ -798,6 +822,87 @@
         return dayKey(d);
       }
 
+      function headerKey(value) {
+        return String(value ?? "").trim();
+      }
+
+      function matrixToObjects(matrix) {
+        if (!Array.isArray(matrix) || !matrix.length || !Array.isArray(matrix[0])) return [];
+        const headerIndex = matrix.findIndex(row => Array.isArray(row) && row.some(cell => {
+          const s = String(cell ?? "").toLowerCase();
+          return s.includes("номер") || s.includes("дата звіту") || s.includes("секунд на стоп");
+        }));
+        if (headerIndex < 0) return [];
+        const headers = matrix[headerIndex].map(headerKey);
+        return matrix.slice(headerIndex + 1)
+          .filter(row => Array.isArray(row) && row.some(v => String(v ?? "").trim() !== ""))
+          .map(row => Object.fromEntries(headers.map((h,i) => [h || `col${i}`, row[i]])));
+      }
+
+      function collectArrays(value, depth = 0, found = []) {
+        if (depth > 5 || value === null || value === undefined) return found;
+        if (Array.isArray(value)) {
+          found.push(value);
+          for (const item of value) {
+            if (item && typeof item === "object") collectArrays(item, depth + 1, found);
+          }
+        } else if (typeof value === "object") {
+          for (const v of Object.values(value)) {
+            if (v && typeof v === "object") collectArrays(v, depth + 1, found);
+          }
+        }
+        return found;
+      }
+
+      function reportRow(row) {
+        if (!row || typeof row !== "object" || Array.isArray(row)) return null;
+
+        const reportDate = firstValue(row, [
+          "reportDate","report_date","dateReport","date_report","Дата звіту","дата звіту"
+        ]);
+        const num = firstValue(row, ["num","number","restaurant","Номер","номер"]);
+        const address = firstValue(row, ["address","Адреса","адреса"]);
+        const stopSecondsRaw = firstValue(row, [
+          "stopSeconds","stop_seconds","secondsOnStop","seconds_on_stop",
+          "Секунд на стопі","секунд на стопі","Секунди на стопі"
+        ]);
+        const checked = firstValue(row, [
+          "checked","checkedTelegram","checked_telegram","Перевірено Telegram","Перевірено Tele"
+        ]);
+        const reportStatus = firstValue(row, [
+          "reportStatus","report_status","Стан звіту","стан звіту"
+        ]);
+        const workHours = firstValue(row, [
+          "workHours","work_hours","Робочі години","робочі години"
+        ]);
+
+        // The daily report is recognizable by report date + restaurant number
+        // and at least one of its special report columns.
+        const hasReportShape =
+          reportDate !== undefined &&
+          num !== undefined &&
+          (stopSecondsRaw !== undefined || reportStatus !== undefined || workHours !== undefined);
+
+        if (!hasReportShape) return null;
+
+        const stopSeconds = Math.max(0, Number(String(stopSecondsRaw ?? "0").replace(",", ".")) || 0);
+        return {
+          kind: "daily-report",
+          reportDate,
+          num,
+          address,
+          stopSeconds,
+          checked,
+          reportStatus: String(reportStatus ?? ""),
+          workHours: String(workHours ?? "")
+        };
+      }
+
+      function liveRow(row) {
+        if (!row || typeof row !== "object" || Array.isArray(row)) return false;
+        return ["delivery","pickup","reason","status"].some(k => row[k] !== undefined);
+      }
+
       function latestPerRestaurant(rows) {
         const map = new Map();
         for (const r of rows) {
@@ -811,44 +916,131 @@
       }
 
       function extractRows(payload) {
+        const arrays = collectArrays(payload);
+        const objectRows = [];
+        const reportRows = [];
+
+        // Read every object-array the API returns, regardless of its property name.
+        for (const arr of arrays) {
+          if (!Array.isArray(arr) || !arr.length) continue;
+
+          if (Array.isArray(arr[0])) {
+            for (const row of matrixToObjects(arr)) objectRows.push(row);
+          } else if (arr.every(x => x && typeof x === "object" && !Array.isArray(x))) {
+            objectRows.push(...arr);
+          }
+        }
+
+        // Top-level object can itself contain one report row.
+        if (payload && typeof payload === "object" && !Array.isArray(payload)) {
+          objectRows.push(payload);
+        }
+
+        const seen = new Set();
+        const uniqueObjects = objectRows.filter(row => {
+          const sig = JSON.stringify(row);
+          if (seen.has(sig)) return false;
+          seen.add(sig);
+          return true;
+        });
+
+        for (const row of uniqueObjects) {
+          const rr = reportRow(row);
+          if (rr && dayKey(parseDateValue(rr.reportDate)) === yesterdayKey()) reportRows.push(rr);
+        }
+
+        // Explicit live keys still get priority.
         const explicitLive = payload && !Array.isArray(payload)
           ? (payload.live ?? payload.current ?? payload.restaurants ?? payload.data)
           : null;
-        const base = Array.isArray(payload) ? payload : (Array.isArray(explicitLive) ? explicitLive : []);
 
-        const explicitYesterday = payload && !Array.isArray(payload)
-          ? (payload.yesterday ?? payload.history ?? payload.archive ?? payload.events ?? payload?.stats?.yesterday ?? payload?.statistics?.yesterday)
-          : null;
+        let live = Array.isArray(explicitLive)
+          ? explicitLive.filter(x => x && typeof x === "object" && !Array.isArray(x) && liveRow(x))
+          : [];
 
-        let yesterday = Array.isArray(explicitYesterday) ? explicitYesterday : [];
+        if (!live.length) {
+          live = uniqueObjects.filter(liveRow);
+        }
+
+        // Keep only current/live restaurant rows if historic event rows are mixed in.
+        const datedLive = live.filter(r => parseRowDate(r));
+        if (datedLive.length && new Set(datedLive.map(r => dayKey(parseRowDate(r)))).size > 1) {
+          live = latestPerRestaurant(live);
+        }
+
+        // Fallback for the older event-history format.
+        let yesterday = reportRows;
         if (!yesterday.length) {
-          yesterday = base.filter(r => dayKey(parseRowDate(r)) === yesterdayKey());
+          yesterday = uniqueObjects.filter(r => {
+            if (!liveRow(r)) return false;
+            return dayKey(parseRowDate(r)) === yesterdayKey();
+          });
         }
 
-        let live = base;
-        const dated = base.filter(r => parseRowDate(r));
-        if (dated.length && new Set(dated.map(r => dayKey(parseRowDate(r)))).size > 1) {
-          live = latestPerRestaurant(base);
-        }
         return {live, yesterday};
       }
 
+      function formatDuration(totalSeconds) {
+        const s = Math.max(0, Math.round(Number(totalSeconds) || 0));
+        const h = Math.floor(s / 3600);
+        const m = Math.floor((s % 3600) / 60);
+        const sec = s % 60;
+        if (h > 0) return `${h}г ${String(m).padStart(2,"0")}хв`;
+        if (m > 0) return `${m}хв ${String(sec).padStart(2,"0")}с`;
+        return `${sec}с`;
+      }
+
       function renderYesterday() {
-        const rows = state.yesterdayRows.map(normalize);
         const yd = new Date();
         yd.setDate(yd.getDate()-1);
         $("#yesterdayDate").textContent = yd.toLocaleDateString("uk-UA",{day:"2-digit",month:"long",year:"numeric"});
 
+        const raw = state.yesterdayRows || [];
+        const report = raw.filter(r => r?.kind === "daily-report");
+
+        if (report.length) {
+          const affected = report.filter(r => r.stopSeconds > 0);
+          const totalSeconds = report.reduce((sum,r) => sum + r.stopSeconds, 0);
+          const maxSeconds = report.reduce((m,r) => Math.max(m,r.stopSeconds), 0);
+
+          $("#yRecords").textContent = report.length;
+          $("#yAttention").textContent = affected.length;
+          $("#yStops").textContent = formatDuration(totalSeconds);
+          $("#yMaxDelivery").textContent = maxSeconds ? formatDuration(maxSeconds) : "0с";
+
+          const ranking = [...report].sort((a,b) => b.stopSeconds - a.stopSeconds || numberValue(a.num)-numberValue(b.num));
+
+          const header = `<div class="y-ranking-head"><span>#</span><span>Ресторан</span><span>Стан звіту</span><span style="text-align:right">На СТОПІ</span></div>`;
+          const body = ranking.map((r,i) => {
+            const status = r.reportStatus || (r.stopSeconds > 0 ? "Був СТОП" : "За графіком");
+            const detail = [r.workHours, r.checked ? `перевірено ${r.checked}` : ""].filter(Boolean).join(" · ");
+            return `<div class="y-row">
+              <div class="y-rank">${String(i+1).padStart(2,"0")}</div>
+              <div class="y-place">
+                <strong>${escapeHtml(r.num || "—")} · ${escapeHtml(r.address || "Ресторан")}</strong>
+                <span>${escapeHtml(detail || "щоденний звіт")}</span>
+              </div>
+              <div class="y-badge">${escapeHtml(status)}</div>
+              <div class="y-max">${r.stopSeconds ? formatDuration(r.stopSeconds) : "0с"}</div>
+            </div>`;
+          }).join("");
+
+          $("#yRanking").innerHTML = header + body;
+          return;
+        }
+
+        // Backward compatibility: if the API still sends yesterday as live-event history.
+        const rows = raw.map(normalize);
         $("#yRecords").textContent = rows.length || "0";
         const attention = rows.filter(r => !r.isStop && !r.isAlarm && r.deliveryMin >= 55);
         const stops = rows.filter(r => r.isStop);
         const maxDelivery = rows.reduce((m,r) => Math.max(m, r.deliveryMin < 9000 ? r.deliveryMin : 0), 0);
         $("#yAttention").textContent = attention.length;
-        $("#yStops").textContent = stops.length;
+        $("#yStops").textContent = stops.length ? `${stops.length} СТОП` : "0";
         $("#yMaxDelivery").textContent = maxDelivery ? `${maxDelivery} хв` : "—";
 
         if (!rows.length) {
-          $("#yRanking").innerHTML = `<div class="y-empty">За вчора немає записів у відповіді API.</div>`;
+          $("#yRanking").innerHTML = `<div class="y-empty">Звіт за вчора поки не переданий сторінці.</div>`;
           return;
         }
 
@@ -863,10 +1055,7 @@
           x.max = Math.max(x.max, r.deliveryMin < 9000 ? r.deliveryMin : 0);
         });
 
-        const ranking = [...byRestaurant.values()]
-          .sort((a,b) => b.score-a.score || b.max-a.max)
-          .slice(0,8);
-
+        const ranking = [...byRestaurant.values()].sort((a,b) => b.score-a.score || b.max-a.max).slice(0,9);
         const header = `<div class="y-ranking-head"><span>#</span><span>Ресторан</span><span>Статус</span><span style="text-align:right">Макс. час</span></div>`;
         const body = ranking.map((r,i) => {
           const status = r.stops ? `${r.stops} СТОП` : r.alarms ? `${r.alarms} трив.` : r.attention ? `${r.attention} увага` : "Норма";
