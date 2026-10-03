@@ -1,85 +1,922 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Dominos Моніторинг</title>
-<style>
-*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#121214;color:#fff;margin:0;padding:12px;display:flex;flex-direction:column;align-items:center}
-h1{font-size:16px;text-align:center;margin:0 0 12px;font-weight:800}.connection{font-size:12px;color:#bbc3ce;max-width:440px;margin-bottom:12px;line-height:1.4}.connection.error{color:#ffb56a}
-.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;width:100%;max-width:440px}
-.card{border:2px solid #34c759;background:#f2fbf4;border-radius:16px;padding:12px;min-height:120px;color:#222;overflow-wrap:anywhere}
-.card.warning{border-color:#fc0;background:#fffbeb}.card.danger-hour{border-color:#ff9500;background:#fff5e6}.card.alarm-blue{border-color:#007aff;background:#ebf5ff}.card.danger-stop{border:4px solid #ff1a1a;background:#ffebe6;box-shadow:0 0 15px #ff1a1a55}.card.unknown{border-color:#87909c;background:#e9edf2}
-.card-header{display:flex;align-items:center;justify-content:space-between;gap:4px}.num{font-size:20px;font-weight:900}.timer{font-size:11px;font-weight:bold;padding:2px 7px;border-radius:20px;background:#ff9500;color:white}.danger-stop .timer{background:#f11}.address{font-size:12px;font-weight:bold;color:#666;margin:4px 0 8px}.line{font-size:13px;margin-bottom:4px}.reason{font-size:11px;color:#9b4c00;font-weight:bold;margin-top:6px;white-space:pre-line}.alarm-blue .reason{color:#0053b3}.danger-stop .reason{color:#b00}.updated{font-size:10px;color:#62666c;margin-top:8px}
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#07101f" />
+  <title>OPS Control — Live Monitoring</title>
+  <style>
+    :root{
+      --bg:#050914;
+      --bg-2:#081120;
+      --panel:rgba(15,24,41,.78);
+      --panel-2:rgba(20,31,52,.92);
+      --line:rgba(255,255,255,.075);
+      --line-strong:rgba(255,255,255,.13);
+      --text:#f7f9fc;
+      --muted:#8d9ab0;
+      --muted-2:#617087;
+      --blue:#2f7cff;
+      --blue-2:#44a2ff;
+      --cyan:#4bd8ff;
+      --green:#22d38a;
+      --yellow:#ffbd3d;
+      --orange:#ff7b31;
+      --red:#ff455d;
+      --red-2:#ff3154;
+      --violet:#9e7cff;
+      --radius:22px;
+      --radius-sm:16px;
+      --shadow:0 24px 60px rgba(0,0,0,.34);
+      --safe-top:env(safe-area-inset-top,0px);
+      --safe-bottom:env(safe-area-inset-bottom,0px);
+    }
 
-.report{width:100%;max-width:440px;margin-top:24px;padding:16px;background:#1d1d21;border:1px solid #35353b;border-radius:16px}
-.report h2{font-size:17px;margin:0 0 8px}.report p{font-size:12px;color:#bbc3ce;line-height:1.5}
-.report table{width:100%;border-collapse:collapse;font-size:13px}.report th,.report td{padding:10px 4px;border-bottom:1px solid #35353b;text-align:left}.report th:last-child,.report td:last-child{text-align:right;white-space:normal;overflow-wrap:anywhere}.report .hours{font-size:11px;color:#aab5c4;margin-top:4px}.report .stopped{color:#ffb56a;font-weight:700}
-@media(min-width:760px){.grid{grid-template-columns:repeat(3,minmax(0,1fr));max-width:960px;gap:14px}.report,.connection{max-width:960px}.card{padding:16px}body{padding:24px}}
-</style>
+    *{box-sizing:border-box}
+    html{background:var(--bg);scroll-behavior:smooth}
+    body{
+      margin:0;
+      min-height:100vh;
+      color:var(--text);
+      font-family:Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background:
+        radial-gradient(900px 520px at 10% -12%, rgba(47,124,255,.22), transparent 58%),
+        radial-gradient(720px 500px at 96% 4%, rgba(255,69,93,.12), transparent 55%),
+        linear-gradient(180deg,#07101f 0%,#050914 48%,#040812 100%);
+      padding:calc(12px + var(--safe-top)) 0 calc(30px + var(--safe-bottom));
+      overflow-x:hidden;
+    }
+
+    body:before{
+      content:"";
+      position:fixed;
+      inset:0;
+      pointer-events:none;
+      opacity:.18;
+      background-image:
+        linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px);
+      background-size:42px 42px;
+      mask-image:linear-gradient(to bottom,black,transparent 85%);
+    }
+
+    button,input,select{font:inherit}
+    button{color:inherit}
+    .app{width:min(1480px,100%);margin:0 auto;padding:0 18px;position:relative;z-index:1}
+
+    .topbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+      padding:10px 2px 20px;
+    }
+    .brand{display:flex;align-items:center;gap:13px;min-width:0}
+    .brand-mark{
+      width:46px;height:46px;border-radius:15px;position:relative;flex:0 0 auto;
+      background:linear-gradient(145deg,#2c7dff 0 49%,#e84058 50% 100%);
+      box-shadow:0 12px 34px rgba(47,124,255,.28), inset 0 0 0 1px rgba(255,255,255,.18);
+      transform:rotate(-4deg);
+    }
+    .brand-mark:before,.brand-mark:after{
+      content:"";position:absolute;background:#fff;border-radius:50%;
+      box-shadow:0 1px 2px rgba(0,0,0,.15);
+    }
+    .brand-mark:before{width:8px;height:8px;left:11px;top:10px}
+    .brand-mark:after{width:8px;height:8px;right:10px;bottom:10px}
+    .brand-copy{min-width:0}
+    .brand-title{font-size:16px;font-weight:850;letter-spacing:.04em;white-space:nowrap}
+    .brand-sub{font-size:11px;color:var(--muted);margin-top:2px;letter-spacing:.12em;text-transform:uppercase;white-space:nowrap}
+    .top-actions{display:flex;align-items:center;gap:9px}
+    .live-pill{
+      display:flex;align-items:center;gap:8px;height:38px;padding:0 13px;border-radius:999px;
+      border:1px solid rgba(34,211,138,.19);background:rgba(34,211,138,.075);
+      color:#aaf3d2;font-weight:750;font-size:12px;letter-spacing:.03em;
+    }
+    .live-dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 0 5px rgba(34,211,138,.09),0 0 18px rgba(34,211,138,.5)}
+    .live-dot.pulse{animation:pulse 1.8s ease-out infinite}
+    @keyframes pulse{
+      0%{box-shadow:0 0 0 0 rgba(34,211,138,.25),0 0 18px rgba(34,211,138,.5)}
+      70%{box-shadow:0 0 0 9px rgba(34,211,138,0),0 0 18px rgba(34,211,138,.5)}
+      100%{box-shadow:0 0 0 0 rgba(34,211,138,0),0 0 18px rgba(34,211,138,.5)}
+    }
+    .icon-btn{
+      width:40px;height:40px;border:1px solid var(--line);background:rgba(255,255,255,.045);
+      border-radius:13px;display:grid;place-items:center;cursor:pointer;transition:.2s ease;
+    }
+    .icon-btn:hover{background:rgba(255,255,255,.08);border-color:var(--line-strong);transform:translateY(-1px)}
+    .icon-btn:active{transform:scale(.97)}
+    .icon-btn svg{width:18px;height:18px}
+    .icon-btn.spin svg{animation:spin .8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    .hero{
+      border:1px solid var(--line);
+      background:
+        linear-gradient(130deg,rgba(47,124,255,.11),transparent 42%),
+        linear-gradient(310deg,rgba(255,69,93,.06),transparent 45%),
+        rgba(10,18,32,.76);
+      box-shadow:var(--shadow);
+      border-radius:30px;
+      padding:25px 25px 24px;
+      backdrop-filter:blur(22px);
+      -webkit-backdrop-filter:blur(22px);
+      position:relative;overflow:hidden;
+    }
+    .hero:after{
+      content:"";position:absolute;width:280px;height:280px;border-radius:50%;
+      right:-140px;top:-160px;border:1px solid rgba(255,255,255,.06);
+      box-shadow:0 0 0 50px rgba(255,255,255,.015),0 0 0 100px rgba(255,255,255,.01);
+    }
+    .hero-head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;position:relative;z-index:1}
+    .eyebrow{font-size:11px;font-weight:800;color:#83b7ff;letter-spacing:.16em;text-transform:uppercase;margin-bottom:10px}
+    h1{font-size:clamp(26px,4vw,46px);line-height:1.02;margin:0;letter-spacing:-.04em;font-weight:900}
+    .hero-copy{color:var(--muted);font-size:13px;margin-top:11px;max-width:720px;line-height:1.6}
+    .hero-side{text-align:right;min-width:145px}
+    .hero-time{font-size:22px;font-weight:850;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+    .hero-date{color:var(--muted);font-size:11px;margin-top:4px;text-transform:uppercase;letter-spacing:.09em}
+
+    .kpi-grid{
+      display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-top:22px;position:relative;z-index:1
+    }
+    .kpi{
+      min-height:105px;border:1px solid var(--line);border-radius:19px;padding:16px;
+      background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.025));
+      position:relative;overflow:hidden;
+    }
+    .kpi:after{content:"";position:absolute;right:-25px;bottom:-35px;width:85px;height:85px;border-radius:50%;background:var(--accent);filter:blur(27px);opacity:.16}
+    .kpi-label{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:11px;font-weight:750;text-transform:uppercase;letter-spacing:.08em}
+    .kpi-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 14px var(--accent)}
+    .kpi-value{font-size:31px;font-weight:900;letter-spacing:-.04em;margin-top:11px;font-variant-numeric:tabular-nums}
+    .kpi-note{color:var(--muted-2);font-size:10px;margin-top:2px}
+    .kpi.total{--accent:var(--blue-2)}
+    .kpi.normal{--accent:var(--green)}
+    .kpi.warning{--accent:var(--yellow)}
+    .kpi.critical{--accent:var(--red)}
+    .kpi.stop{--accent:var(--violet)}
+
+    .critical-strip{
+      margin-top:14px;border-radius:18px;padding:13px 14px;display:none;align-items:center;gap:12px;
+      border:1px solid rgba(255,69,93,.18);background:linear-gradient(90deg,rgba(255,69,93,.105),rgba(255,123,49,.05));
+    }
+    .critical-strip.show{display:flex}
+    .critical-icon{
+      width:36px;height:36px;border-radius:12px;background:rgba(255,69,93,.12);display:grid;place-items:center;flex:0 0 auto;
+      color:#ff8191
+    }
+    .critical-icon svg{width:18px;height:18px}
+    .critical-main{min-width:0;flex:1}
+    .critical-title{font-size:12px;font-weight:850}
+    .critical-text{font-size:11px;color:#c5cbd5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+    .critical-count{font-size:12px;font-weight:900;color:#ff91a0;padding:6px 9px;border-radius:9px;background:rgba(255,69,93,.09)}
+
+    .toolbar{
+      display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;
+      margin:18px 0 13px;
+    }
+    .search-wrap{position:relative}
+    .search-wrap svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:17px;height:17px;color:var(--muted-2);pointer-events:none}
+    .search{
+      width:100%;height:46px;border-radius:15px;border:1px solid var(--line);outline:none;
+      background:rgba(14,22,37,.72);color:var(--text);padding:0 16px 0 42px;
+      transition:.2s ease;box-shadow:inset 0 1px 0 rgba(255,255,255,.025)
+    }
+    .search::placeholder{color:#5e6b80}
+    .search:focus{border-color:rgba(68,162,255,.35);box-shadow:0 0 0 4px rgba(47,124,255,.07)}
+    .sort{
+      height:46px;min-width:175px;border-radius:15px;border:1px solid var(--line);outline:none;
+      background:#0d1627;color:var(--text);padding:0 13px;cursor:pointer
+    }
+
+    .filters{display:flex;gap:8px;overflow-x:auto;padding:0 0 9px;scrollbar-width:none}
+    .filters::-webkit-scrollbar{display:none}
+    .chip{
+      border:1px solid var(--line);background:rgba(255,255,255,.035);height:37px;padding:0 13px;border-radius:999px;
+      display:flex;align-items:center;gap:7px;white-space:nowrap;cursor:pointer;color:#aab4c4;font-size:12px;font-weight:740;transition:.2s ease
+    }
+    .chip:hover{background:rgba(255,255,255,.06)}
+    .chip.active{color:#e9f3ff;border-color:rgba(68,162,255,.26);background:rgba(47,124,255,.11);box-shadow:inset 0 0 0 1px rgba(68,162,255,.05)}
+    .chip-badge{min-width:20px;height:20px;padding:0 6px;border-radius:8px;display:grid;place-items:center;background:rgba(255,255,255,.06);font-size:10px}
+
+    .section-head{display:flex;justify-content:space-between;align-items:end;gap:14px;margin:6px 1px 10px}
+    .section-title{font-size:14px;font-weight:850;letter-spacing:.01em}
+    .section-sub{font-size:10px;color:var(--muted);margin-top:3px}
+    .last-update{font-size:10px;color:var(--muted);white-space:nowrap}
+    .last-update b{color:#c7d2e3;font-weight:750}
+
+    .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+    .restaurant{
+      position:relative;overflow:hidden;border-radius:22px;border:1px solid var(--line);
+      background:linear-gradient(180deg,rgba(18,28,47,.94),rgba(11,18,31,.94));
+      box-shadow:0 12px 38px rgba(0,0,0,.16);
+      min-height:244px;padding:17px;transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease;
+      isolation:isolate;
+    }
+    .restaurant:hover{transform:translateY(-2px);border-color:rgba(255,255,255,.12);box-shadow:0 20px 44px rgba(0,0,0,.24)}
+    .restaurant:before{content:"";position:absolute;inset:0 0 auto;height:3px;background:var(--state);opacity:.95}
+    .restaurant:after{content:"";position:absolute;right:-54px;top:-70px;width:155px;height:155px;border-radius:50%;background:var(--state);filter:blur(55px);opacity:.08;z-index:-1}
+    .restaurant.normal{--state:var(--green)}
+    .restaurant.warning{--state:var(--yellow)}
+    .restaurant.danger-hour{--state:var(--red)}
+    .restaurant.alarm-blue{--state:var(--blue-2)}
+    .restaurant.danger-stop{--state:var(--violet)}
+    .restaurant-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+    .rest-id{display:flex;gap:11px;min-width:0}
+    .rest-num{
+      min-width:44px;height:44px;padding:0 8px;border-radius:14px;display:grid;place-items:center;flex:0 0 auto;
+      color:white;font-size:13px;font-weight:900;background:linear-gradient(145deg,rgba(255,255,255,.09),rgba(255,255,255,.035));
+      border:1px solid rgba(255,255,255,.08)
+    }
+    .rest-text{min-width:0;padding-top:2px}
+    .rest-name{font-size:14px;font-weight:850;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:225px}
+    .rest-meta{font-size:10px;color:var(--muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:235px}
+    .state-pill{
+      height:29px;padding:0 10px;border-radius:999px;display:flex;align-items:center;gap:6px;
+      color:var(--state);background:color-mix(in srgb,var(--state) 10%,transparent);
+      border:1px solid color-mix(in srgb,var(--state) 19%,transparent);
+      font-size:9px;font-weight:850;letter-spacing:.07em;text-transform:uppercase;white-space:nowrap
+    }
+    .state-dot{width:6px;height:6px;border-radius:50%;background:var(--state);box-shadow:0 0 10px var(--state)}
+
+    .metric-row{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:16px}
+    .metric{
+      border:1px solid rgba(255,255,255,.065);background:rgba(255,255,255,.03);border-radius:15px;padding:12px 12px 11px
+    }
+    .metric-label{font-size:9px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);font-weight:750}
+    .metric-value{font-size:22px;font-weight:900;letter-spacing:-.04em;margin-top:6px;font-variant-numeric:tabular-nums}
+    .metric-value small{font-size:10px;color:var(--muted);font-weight:700;margin-left:3px;letter-spacing:0}
+    .metric-bar{height:3px;border-radius:999px;background:rgba(255,255,255,.055);margin-top:9px;overflow:hidden}
+    .metric-bar span{display:block;height:100%;width:var(--w);max-width:100%;border-radius:inherit;background:var(--bar);box-shadow:0 0 10px color-mix(in srgb,var(--bar) 55%,transparent)}
+
+    .issue-box{
+      margin-top:10px;border-radius:14px;border:1px solid rgba(255,255,255,.06);background:rgba(0,0,0,.13);
+      padding:10px 11px;display:flex;align-items:center;gap:9px
+    }
+    .issue-icon{width:29px;height:29px;border-radius:10px;display:grid;place-items:center;background:color-mix(in srgb,var(--state) 9%,transparent);color:var(--state);flex:0 0 auto}
+    .issue-icon svg{width:15px;height:15px}
+    .issue-text{min-width:0;flex:1}
+    .issue-title{font-size:10px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .issue-reason{font-size:9px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .timer{font-size:10px;font-weight:850;color:#d6e1ef;font-variant-numeric:tabular-nums;white-space:nowrap}
+
+    .card-foot{display:flex;justify-content:space-between;align-items:center;margin-top:10px;color:var(--muted-2);font-size:9px}
+    .fresh{display:flex;align-items:center;gap:5px}
+    .fresh i{width:5px;height:5px;border-radius:50%;background:var(--green);display:block}
+
+    .empty,.error-box,.setup{
+      border:1px solid var(--line);background:rgba(13,21,36,.75);border-radius:22px;padding:28px;text-align:center;color:var(--muted)
+    }
+    .empty h3,.error-box h3,.setup h3{color:var(--text);margin:0 0 7px;font-size:15px}
+    .empty p,.error-box p,.setup p{font-size:12px;line-height:1.55;margin:0 auto;max-width:540px}
+    .retry{
+      margin-top:14px;height:40px;padding:0 15px;border-radius:12px;border:1px solid rgba(68,162,255,.22);
+      background:rgba(47,124,255,.11);color:#dcebff;cursor:pointer;font-weight:780;font-size:12px
+    }
+    .setup-form{display:flex;gap:8px;max-width:740px;margin:16px auto 0}
+    .setup-input{
+      flex:1;height:44px;border-radius:13px;border:1px solid var(--line);background:#0b1424;color:white;padding:0 13px;outline:none;min-width:0
+    }
+
+    .skeleton{
+      min-height:244px;border-radius:22px;border:1px solid var(--line);background:rgba(17,26,44,.74);padding:17px;overflow:hidden;position:relative
+    }
+    .skeleton:after{
+      content:"";position:absolute;inset:0;transform:translateX(-100%);
+      background:linear-gradient(90deg,transparent,rgba(255,255,255,.045),transparent);
+      animation:shimmer 1.35s infinite
+    }
+    @keyframes shimmer{100%{transform:translateX(100%)}}
+    .sk-line{height:10px;border-radius:6px;background:rgba(255,255,255,.055);margin-bottom:10px}
+    .sk-big{height:54px;border-radius:14px;background:rgba(255,255,255,.045);margin-top:15px}
+
+    .footer{
+      display:flex;justify-content:space-between;gap:16px;align-items:center;margin:22px 2px 0;
+      color:#4c596e;font-size:9px;text-transform:uppercase;letter-spacing:.09em
+    }
+
+    .toast{
+      position:fixed;left:50%;bottom:calc(22px + var(--safe-bottom));transform:translate(-50%,20px);
+      min-width:min(420px,calc(100vw - 30px));max-width:560px;padding:11px 13px;border-radius:13px;
+      border:1px solid var(--line-strong);background:rgba(12,20,34,.96);box-shadow:0 16px 45px rgba(0,0,0,.36);
+      opacity:0;pointer-events:none;transition:.24s ease;z-index:99;color:#dfe8f5;font-size:11px;text-align:center
+    }
+    .toast.show{opacity:1;transform:translate(-50%,0)}
+
+    @media (max-width:1050px){
+      .grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .kpi-grid{grid-template-columns:repeat(5,minmax(110px,1fr));overflow-x:auto;padding-bottom:3px}
+      .kpi{min-width:120px}
+    }
+    @media (max-width:680px){
+      body{padding-top:calc(8px + var(--safe-top))}
+      .app{padding:0 12px}
+      .topbar{padding:7px 2px 14px}
+      .brand-mark{width:41px;height:41px;border-radius:13px}
+      .brand-title{font-size:14px}.brand-sub{font-size:9px}
+      .live-pill{height:34px;padding:0 10px;font-size:10px}
+      .icon-btn{width:36px;height:36px;border-radius:12px}
+      .hero{padding:19px 15px 16px;border-radius:24px}
+      h1{font-size:30px}
+      .hero-copy{font-size:11px;margin-top:8px}
+      .hero-side{display:none}
+      .kpi-grid{margin-top:17px;gap:8px;margin-right:-15px;padding-right:15px}
+      .kpi{min-width:117px;min-height:94px;padding:13px;border-radius:16px}
+      .kpi-value{font-size:27px}
+      .kpi-note{font-size:9px}
+      .critical-strip{padding:11px}
+      .toolbar{grid-template-columns:1fr;gap:8px;margin-top:14px}
+      .sort{width:100%;min-width:0}
+      .grid{grid-template-columns:1fr;gap:10px}
+      .restaurant{min-height:229px;border-radius:20px;padding:15px}
+      .rest-name{max-width:200px}
+      .rest-meta{max-width:210px}
+      .metric-value{font-size:21px}
+      .filters{margin-right:-12px;padding-right:12px}
+      .footer{display:block;text-align:center;line-height:1.7}
+      .footer span:last-child{display:block}
+      .setup-form{flex-direction:column}
+      .setup-form .retry{margin-top:0}
+    }
+    @media (max-width:390px){
+      .brand-sub{display:none}
+      .live-pill span:last-child{display:none}
+      .rest-name{max-width:158px}
+      .rest-meta{max-width:170px}
+      .state-pill{padding:0 8px}
+    }
+  </style>
 </head>
+
 <body>
-<h1>🍕 DOMINO'S МОНІТОРИНГ СТОПІВ</h1>
-<div id="connection" class="connection" role="status">⏳ Завантаження…</div>
-<div id="grid" class="grid"></div>
-<section id="report" class="report" aria-label="Звіт про стопи за вчора"></section>
-<script>
-const source = new URLSearchParams(location.search).get('url');
-let loading = false;
-function el(tag,cls,text){const x=document.createElement(tag);x.className=cls;x.textContent=text;return x;}
-function note(text,bad){const x=document.getElementById('connection');x.textContent=text;x.className='connection'+(bad?' error':'');}
-function render(data){
-  const grid=document.getElementById('grid');const fragment=document.createDocumentFragment();
-  for(const item of data){
-    const kind=['normal','warning','danger-hour','danger-stop','alarm-blue','unknown'].includes(item.kind)?item.kind:'unknown';
-    const card=el('div','card '+kind,'');const head=el('div','card-header','');head.append(el('span','num','#'+item.num));
-    if(kind==='danger-hour'||kind==='danger-stop')head.append(el('span','timer',Math.max(0,Number(item.minutes)||0)+' хв'));
-    card.append(head,el('div','address',item.address),el('div','line','🛵 Дост: '+item.delivery),el('div','line','📦 Сам: '+item.pickup));
-    if(item.reason && !['Норма','Початок зміни (Авто)'].includes(item.reason))card.append(el('div','reason','⚠️ '+item.reason));
-    if(item.updated){const t=new Date(item.updated);if(Number.isFinite(t.getTime()))card.append(el('div','updated','Повідомлення: '+t.toLocaleString('uk-UA',{timeZone:'Europe/Kyiv',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})));}
-    fragment.append(card);
-  }
-  grid.replaceChildren(fragment);
-}
-function renderReport(data){
-  const box=document.getElementById('report');box.replaceChildren();
-  const today=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Kyiv'});
-  const parts=today.split('-').map(Number);
-  const date=new Date(Date.UTC(parts[0],parts[1]-1,parts[2]-1)).toISOString().slice(0,10);
-  box.append(el('h2','','Стопи за вчора · '+date.split('-').reverse().join('.')));
-  const complete=data.length===9 && data.every(x=>x.yesterday && x.yesterday.date===date);
-  if(!complete){box.append(el('p','','Звіт ще не готовий. Потрібне оновлення бота та Google Script; після запуску бот завантажить доступні повідомлення за вчора.'));return;}
-  box.append(el('p','','Сумарний час явного СТОП доставки або самовивозу, включно зі стопами через тривогу. Одночасні стопи рахуються один раз. Враховано лише робочі години з вкладки «Графік», за Києвом.'));
-  const table=el('table','','');const head=el('thead','','');const hr=el('tr','','');hr.append(el('th','','Піцерія'),el('th','','Час на стопі'));head.append(hr);table.append(head);
-  const body=el('tbody','','');
-  for(const item of data){
-    const r=item.yesterday;const sec=r.seconds;
-    const valid=['За графіком','Вихідний'].includes(r.scheduleStatus) && Number.isFinite(sec) && sec>=0;
-    const mins=valid?Math.floor(sec/60):0;
-    const duration=!valid?(['За графіком','Вихідний'].includes(r.scheduleStatus)?'Немає даних':r.scheduleStatus==='За доступними повідомленнями Telegram'?'Потрібне оновлення бота':r.scheduleStatus||'Графік не задано'):r.scheduleStatus==='Вихідний'?'Вихідний':sec===0?'0 хв':mins===0?'менше 1 хв':Math.floor(mins/60)+' год '+String(mins%60).padStart(2,'0')+' хв';
-    const row=el('tr','','');const name=el('td','','#'+item.num+' · '+item.address);
-    if(r.hours && r.hours!=='Вихідний')name.append(el('div','hours',r.hours));
-    row.append(name,el('td',valid&&sec?'stopped':'',duration));body.append(row);
-  }
-  table.append(body);box.append(table,el('p','','За доступними повідомленнями Telegram. 0 хв означає, що явного стопу не зафіксовано. Видалені повідомлення та зміни без повідомлень не враховані. Час до відкриття та після закриття не враховується. Порожній графік не означає 0 хв; заповніть вкладку «Графік».'));
-}
-async function loadData(){
-  if(loading)return;
-  if(!source){note('❌ У посиланні немає параметра url із адресою Google Apps Script.',true);return;}
-  loading=true;const abort=new AbortController();const timeout=setTimeout(()=>abort.abort(),12000);
-  try{
-    const u=new URL(source);if(u.protocol!=='https:')throw Error('Потрібне HTTPS-посилання');
-    u.searchParams.set('_',Date.now());const response=await fetch(u,{signal:abort.signal,cache:'no-store'});
-    if(!response.ok)throw Error('HTTP '+response.status);
-    const data=await response.json();if(!Array.isArray(data)||!data.length)throw Error(data.error||'Немає даних');
-    render(data);renderReport(data);
-    const checked=Math.min(...data.map(x=>new Date(x.checked).getTime()||0));
-    if(Date.now()-checked>7*60000)note('⚠️ Telegram давно не перевірявся. Нижче — останні збережені дані.',true);
-    else note('● Дані отримано о '+new Date().toLocaleTimeString('uk-UA',{timeZone:'Europe/Kyiv'})+' · оновлення кожні 15 с',false);
-  }catch(e){note('⚠️ Не вдалося оновити дані. Показано останні отримані значення.',true);}
-  finally{clearTimeout(timeout);loading=false;}
-}
-loadData();setInterval(loadData,15000);
-</script>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"></div>
+        <div class="brand-copy">
+          <div class="brand-title">OPS CONTROL</div>
+          <div class="brand-sub">Live restaurant network</div>
+        </div>
+      </div>
+
+      <div class="top-actions">
+        <div class="live-pill" id="livePill">
+          <span class="live-dot pulse" id="liveDot"></span>
+          <span id="connectionText">LIVE</span>
+        </div>
+        <button class="icon-btn" id="refreshBtn" aria-label="Оновити" title="Оновити">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 11a8.1 8.1 0 0 0-15.5-2M4 4v5h5"/>
+            <path d="M4 13a8.1 8.1 0 0 0 15.5 2M20 20v-5h-5"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <section class="hero">
+      <div class="hero-head">
+        <div>
+          <div class="eyebrow">Operations Command Center</div>
+          <h1>Контроль мережі<br>в реальному часі</h1>
+          <div class="hero-copy">Один екран для часу доставки, самовивозу, СТОПів, тривог і критичних відхилень по ресторанах.</div>
+        </div>
+        <div class="hero-side">
+          <div class="hero-time" id="clock">--:--:--</div>
+          <div class="hero-date" id="dateLabel">—</div>
+        </div>
+      </div>
+
+      <div class="kpi-grid">
+        <article class="kpi total">
+          <div class="kpi-label"><span class="kpi-dot"></span>Всього</div>
+          <div class="kpi-value" id="kpiTotal">—</div>
+          <div class="kpi-note">ресторанів у моніторингу</div>
+        </article>
+        <article class="kpi normal">
+          <div class="kpi-label"><span class="kpi-dot"></span>Норма</div>
+          <div class="kpi-value" id="kpiNormal">—</div>
+          <div class="kpi-note">без активних ризиків</div>
+        </article>
+        <article class="kpi warning">
+          <div class="kpi-label"><span class="kpi-dot"></span>Увага</div>
+          <div class="kpi-value" id="kpiWarning">—</div>
+          <div class="kpi-note">час вище цільового</div>
+        </article>
+        <article class="kpi critical">
+          <div class="kpi-label"><span class="kpi-dot"></span>Критично</div>
+          <div class="kpi-value" id="kpiCritical">—</div>
+          <div class="kpi-note">60+ хв / тривога</div>
+        </article>
+        <article class="kpi stop">
+          <div class="kpi-label"><span class="kpi-dot"></span>СТОП</div>
+          <div class="kpi-value" id="kpiStop">—</div>
+          <div class="kpi-note">операційно зупинені</div>
+        </article>
+      </div>
+
+      <div class="critical-strip" id="criticalStrip">
+        <div class="critical-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">
+            <path d="M12 3 2.8 19h18.4L12 3Z"/>
+            <path d="M12 9v4.2"/><path d="M12 16.4h.01"/>
+          </svg>
+        </div>
+        <div class="critical-main">
+          <div class="critical-title">Потрібна увага</div>
+          <div class="critical-text" id="criticalText">Є ресторани з критичними відхиленнями</div>
+        </div>
+        <div class="critical-count" id="criticalCount">0</div>
+      </div>
+    </section>
+
+    <section class="toolbar">
+      <div class="search-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>
+        </svg>
+        <input class="search" id="searchInput" type="search" placeholder="Пошук: № ресторану, адреса, причина…" autocomplete="off"/>
+      </div>
+      <select class="sort" id="sortSelect" aria-label="Сортування">
+        <option value="risk">Спочатку критичні</option>
+        <option value="number">За номером ресторану</option>
+        <option value="delivery">За часом доставки</option>
+        <option value="pickup">За самовивозом</option>
+      </select>
+    </section>
+
+    <div class="filters" id="filters">
+      <button class="chip active" data-filter="all">Всі <span class="chip-badge" data-count="all">0</span></button>
+      <button class="chip" data-filter="normal">Норма <span class="chip-badge" data-count="normal">0</span></button>
+      <button class="chip" data-filter="warning">Увага <span class="chip-badge" data-count="warning">0</span></button>
+      <button class="chip" data-filter="critical">Критично <span class="chip-badge" data-count="critical">0</span></button>
+      <button class="chip" data-filter="stop">СТОП <span class="chip-badge" data-count="stop">0</span></button>
+      <button class="chip" data-filter="alarm">Тривога <span class="chip-badge" data-count="alarm">0</span></button>
+    </div>
+
+    <div class="section-head">
+      <div>
+        <div class="section-title">Ресторани</div>
+        <div class="section-sub" id="resultLabel">Завантаження даних…</div>
+      </div>
+      <div class="last-update">Оновлено: <b id="lastUpdated">—</b></div>
+    </div>
+
+    <section class="grid" id="grid">
+      <div class="skeleton"><div class="sk-line" style="width:45%"></div><div class="sk-line" style="width:70%"></div><div class="sk-big"></div><div class="sk-big"></div></div>
+      <div class="skeleton"><div class="sk-line" style="width:55%"></div><div class="sk-line" style="width:62%"></div><div class="sk-big"></div><div class="sk-big"></div></div>
+      <div class="skeleton"><div class="sk-line" style="width:38%"></div><div class="sk-line" style="width:75%"></div><div class="sk-big"></div><div class="sk-big"></div></div>
+    </section>
+
+    <footer class="footer">
+      <span>OPS CONTROL · Internal Operations</span>
+      <span>Auto refresh · 15 sec</span>
+    </footer>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    (() => {
+      const REFRESH_MS = 15000;
+      const REQUEST_TIMEOUT_MS = 10000;
+
+      const $ = (s) => document.querySelector(s);
+      const $$ = (s) => [...document.querySelectorAll(s)];
+
+      const state = {
+        rows: [],
+        filter: "all",
+        query: "",
+        sort: "risk",
+        loading: false,
+        lastSuccess: null,
+        timer: null
+      };
+
+      const params = new URLSearchParams(location.search);
+      let googleScriptUrl = params.get("url") || localStorage.getItem("ops_api_url") || "";
+
+      if (params.get("url")) {
+        localStorage.setItem("ops_api_url", params.get("url"));
+      }
+
+      const icons = {
+        pulse: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg>`,
+        stop: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m8 3-5 5v8l5 5h8l5-5V8l-5-5H8Z"/><path d="M8 12h8"/></svg>`,
+        alarm: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>`,
+        warning: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3 2.8 19h18.4L12 3Z"/><path d="M12 9v4.2"/><path d="M12 16.4h.01"/></svg>`,
+        check: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m5 12 4 4L19 6"/></svg>`
+      };
+
+      function escapeHtml(value) {
+        return String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+
+      function parseMinutes(value) {
+        if (value === null || value === undefined) return 0;
+        if (typeof value === "number" && Number.isFinite(value)) return Math.max(0, value);
+
+        const s = String(value).trim().toLowerCase().replace(",", ".");
+        if (!s) return 0;
+
+        const hm = s.match(/(\d{1,2})\s*:\s*(\d{1,2})/);
+        if (hm) return Number(hm[1]) * 60 + Number(hm[2]);
+
+        const hours = s.match(/(\d+(?:\.\d+)?)\s*(?:год|г|hour|hr)/);
+        const mins = s.match(/(\d+)\s*(?:хв|min|m)\b/);
+        if (hours || mins) {
+          return Math.round((hours ? Number(hours[1]) * 60 : 0) + (mins ? Number(mins[1]) : 0));
+        }
+
+        const raw = s.match(/\d+(?:\.\d+)?/);
+        return raw ? Math.round(Number(raw[0])) : 0;
+      }
+
+      function numberValue(num) {
+        const m = String(num ?? "").match(/\d+/);
+        return m ? Number(m[0]) : 9999;
+      }
+
+      function normalize(row) {
+        const deliveryMin = parseMinutes(row.delivery ?? row.minutes ?? 0);
+        const pickupMin = parseMinutes(row.pickup ?? 0);
+        const statusRaw = String(row.status ?? "").trim();
+        const reasonRaw = String(row.reason ?? "").trim();
+
+        const isStop = statusRaw.toUpperCase().includes("СТОП");
+        const isAlarm = reasonRaw.toLowerCase().includes("тривог");
+        const isHour = deliveryMin >= 60;
+        const isWarning = !isStop && !isAlarm && !isHour && (deliveryMin >= 46 || pickupMin >= 41);
+
+        let uiClass = "normal";
+        let group = "normal";
+        let label = "Норма";
+        let issueTitle = "Працює стабільно";
+        let icon = icons.check;
+        let risk = 1;
+
+        if (isStop) {
+          uiClass = "danger-stop";
+          group = "stop";
+          label = "СТОП";
+          issueTitle = "Ресторан на СТОПІ";
+          icon = icons.stop;
+          risk = 5;
+        } else if (isAlarm) {
+          uiClass = "alarm-blue";
+          group = "alarm";
+          label = "Тривога";
+          issueTitle = "Повітряна тривога";
+          icon = icons.alarm;
+          risk = 4;
+        } else if (isHour) {
+          uiClass = "danger-hour";
+          group = "critical";
+          label = "Критично";
+          issueTitle = "Доставка 60+ хв";
+          icon = icons.warning;
+          risk = 4;
+        } else if (isWarning) {
+          uiClass = "warning";
+          group = "warning";
+          label = "Увага";
+          issueTitle = "Підвищений час";
+          icon = icons.pulse;
+          risk = 2;
+        }
+
+        return {
+          ...row,
+          deliveryMin,
+          pickupMin,
+          statusRaw,
+          reasonRaw,
+          isStop,
+          isAlarm,
+          isHour,
+          isWarning,
+          uiClass,
+          group,
+          label,
+          issueTitle,
+          icon,
+          risk
+        };
+      }
+
+      function thresholdWidth(value, target, danger) {
+        if (!value) return 0;
+        const base = Math.max(danger, target, 1);
+        return Math.min(100, Math.max(8, (value / base) * 100));
+      }
+
+      function metricColor(type, value) {
+        if (type === "delivery") {
+          if (value >= 60) return "var(--red)";
+          if (value >= 46) return "var(--yellow)";
+          return "var(--green)";
+        }
+        if (value >= 41) return "var(--yellow)";
+        return "var(--green)";
+      }
+
+      function timeAge(timeText) {
+        if (!timeText) return "";
+        const m = String(timeText).match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+        if (!m) return "";
+        const now = new Date();
+        const start = new Date(now);
+        start.setHours(Number(m[1]), Number(m[2]), Number(m[3] || 0), 0);
+        if (start - now > 60 * 60 * 1000) start.setDate(start.getDate() - 1);
+        const sec = Math.max(0, Math.floor((now - start) / 1000));
+        const h = Math.floor(sec / 3600);
+        const min = Math.floor((sec % 3600) / 60);
+        if (h > 0) return `${h}г ${String(min).padStart(2,"0")}хв`;
+        return `${min} хв`;
+      }
+
+      function cardHtml(r) {
+        const deliveryBar = thresholdWidth(r.deliveryMin, 30, 60);
+        const pickupBar = thresholdWidth(r.pickupMin, 15, 45);
+        const reason = r.reasonRaw || r.statusRaw || "Без активних відхилень";
+        const elapsed = (r.risk > 1 || r.isAlarm || r.isStop) ? timeAge(r.time) : "";
+        const freshLabel = r.time ? `дані ${escapeHtml(r.time)}` : "актуальні дані";
+
+        return `
+          <article class="restaurant ${r.uiClass}" data-num="${escapeHtml(r.num)}">
+            <div class="restaurant-head">
+              <div class="rest-id">
+                <div class="rest-num">${escapeHtml(r.num || "—")}</div>
+                <div class="rest-text">
+                  <div class="rest-name">${escapeHtml(r.address || "Адреса не вказана")}</div>
+                  <div class="rest-meta">${escapeHtml(r.statusRaw || "ПРАЦЮЄ")}</div>
+                </div>
+              </div>
+              <div class="state-pill"><span class="state-dot"></span>${escapeHtml(r.label)}</div>
+            </div>
+
+            <div class="metric-row">
+              <div class="metric">
+                <div class="metric-label">Доставка</div>
+                <div class="metric-value">${r.deliveryMin || "—"}${r.deliveryMin ? "<small>хв</small>" : ""}</div>
+                <div class="metric-bar">
+                  <span style="--w:${deliveryBar}%;--bar:${metricColor("delivery",r.deliveryMin)}"></span>
+                </div>
+              </div>
+              <div class="metric">
+                <div class="metric-label">Самовивіз</div>
+                <div class="metric-value">${r.pickupMin || "—"}${r.pickupMin ? "<small>хв</small>" : ""}</div>
+                <div class="metric-bar">
+                  <span style="--w:${pickupBar}%;--bar:${metricColor("pickup",r.pickupMin)}"></span>
+                </div>
+              </div>
+            </div>
+
+            <div class="issue-box">
+              <div class="issue-icon">${r.icon}</div>
+              <div class="issue-text">
+                <div class="issue-title">${escapeHtml(r.issueTitle)}</div>
+                <div class="issue-reason">${escapeHtml(reason)}</div>
+              </div>
+              ${elapsed ? `<div class="timer" data-start="${escapeHtml(r.time || "")}">${elapsed}</div>` : ""}
+            </div>
+
+            <div class="card-foot">
+              <div class="fresh"><i></i>${freshLabel}</div>
+              <div>${r.risk >= 4 ? "Priority P1" : r.risk === 2 ? "Priority P2" : "Stable"}</div>
+            </div>
+          </article>
+        `;
+      }
+
+      function counts(rows) {
+        return {
+          all: rows.length,
+          normal: rows.filter(r => r.group === "normal").length,
+          warning: rows.filter(r => r.group === "warning").length,
+          critical: rows.filter(r => r.group === "critical" || r.group === "alarm").length,
+          stop: rows.filter(r => r.group === "stop").length,
+          alarm: rows.filter(r => r.group === "alarm").length
+        };
+      }
+
+      function updateSummary() {
+        const c = counts(state.rows);
+        $("#kpiTotal").textContent = c.all;
+        $("#kpiNormal").textContent = c.normal;
+        $("#kpiWarning").textContent = c.warning;
+        $("#kpiCritical").textContent = c.critical;
+        $("#kpiStop").textContent = c.stop;
+
+        $$("[data-count]").forEach(el => {
+          const key = el.dataset.count;
+          el.textContent = c[key] ?? 0;
+        });
+
+        const attention = state.rows.filter(r => r.risk >= 4 || r.group === "stop");
+        const strip = $("#criticalStrip");
+        if (attention.length) {
+          const top = [...attention]
+            .sort((a,b) => b.risk - a.risk || b.deliveryMin - a.deliveryMin)
+            .slice(0,3)
+            .map(r => `${r.num || ""} ${r.address || ""}`.trim())
+            .join(" · ");
+          $("#criticalText").textContent = top || "Є ресторани з критичними відхиленнями";
+          $("#criticalCount").textContent = attention.length;
+          strip.classList.add("show");
+        } else {
+          strip.classList.remove("show");
+        }
+      }
+
+      function visibleRows() {
+        const q = state.query.trim().toLowerCase();
+        let rows = state.rows.filter(r => {
+          const filterOk =
+            state.filter === "all" ||
+            r.group === state.filter ||
+            (state.filter === "critical" && (r.group === "critical" || r.group === "alarm"));
+          if (!filterOk) return false;
+          if (!q) return true;
+          return [r.num, r.address, r.reasonRaw, r.statusRaw]
+            .some(v => String(v ?? "").toLowerCase().includes(q));
+        });
+
+        rows.sort((a,b) => {
+          if (state.sort === "number") return numberValue(a.num) - numberValue(b.num);
+          if (state.sort === "delivery") return b.deliveryMin - a.deliveryMin || numberValue(a.num) - numberValue(b.num);
+          if (state.sort === "pickup") return b.pickupMin - a.pickupMin || numberValue(a.num) - numberValue(b.num);
+          return b.risk - a.risk || b.deliveryMin - a.deliveryMin || numberValue(a.num) - numberValue(b.num);
+        });
+        return rows;
+      }
+
+      function render() {
+        updateSummary();
+        const rows = visibleRows();
+        $("#resultLabel").textContent = `Показано ${rows.length} із ${state.rows.length}`;
+
+        if (!rows.length) {
+          $("#grid").innerHTML = `
+            <div class="empty" style="grid-column:1/-1">
+              <h3>Нічого не знайдено</h3>
+              <p>Зміни фільтр або пошуковий запит. Дані моніторингу не видаляються — змінюється лише відображення.</p>
+            </div>`;
+          return;
+        }
+
+        $("#grid").innerHTML = rows.map(cardHtml).join("");
+      }
+
+      function renderSetup() {
+        $("#grid").innerHTML = `
+          <div class="setup" style="grid-column:1/-1">
+            <h3>Підключи джерело даних</h3>
+            <p>Ця версія сумісна зі старою схемою: передай Apps Script URL через <b>?url=</b> або встав його нижче. Посилання збережеться тільки в цьому браузері.</p>
+            <div class="setup-form">
+              <input class="setup-input" id="apiInput" placeholder="https://script.google.com/macros/s/.../exec">
+              <button class="retry" id="saveApiBtn">Підключити</button>
+            </div>
+          </div>`;
+        $("#resultLabel").textContent = "API не підключено";
+        $("#saveApiBtn")?.addEventListener("click", () => {
+          const value = $("#apiInput").value.trim();
+          if (!value) return;
+          googleScriptUrl = value;
+          localStorage.setItem("ops_api_url", value);
+          showToast("Джерело даних збережено");
+          loadData(true);
+        });
+      }
+
+      function showError(message) {
+        $("#grid").innerHTML = `
+          <div class="error-box" style="grid-column:1/-1">
+            <h3>Не вдалося оновити дані</h3>
+            <p>${escapeHtml(message)}</p>
+            <button class="retry" onclick="window.__opsReload()">Спробувати ще раз</button>
+          </div>`;
+        $("#connectionText").textContent = "OFFLINE";
+        $("#liveDot").classList.remove("pulse");
+        $("#liveDot").style.background = "var(--red)";
+        $("#resultLabel").textContent = "Помилка підключення";
+      }
+
+      function setLoading(loading) {
+        state.loading = loading;
+        $("#refreshBtn").classList.toggle("spin", loading);
+      }
+
+      function setOnline() {
+        $("#connectionText").textContent = "LIVE";
+        $("#liveDot").classList.add("pulse");
+        $("#liveDot").style.background = "var(--green)";
+      }
+
+      async function fetchJson(url) {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+        try {
+          const response = await fetch(url, {
+            method: "GET",
+            cache: "no-store",
+            signal: controller.signal
+          });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          return await response.json();
+        } finally {
+          clearTimeout(timeout);
+        }
+      }
+
+      async function loadData(manual = false) {
+        if (state.loading) return;
+        if (!googleScriptUrl) {
+          renderSetup();
+          return;
+        }
+
+        setLoading(true);
+        try {
+          const payload = await fetchJson(googleScriptUrl);
+          const data = Array.isArray(payload) ? payload : (Array.isArray(payload?.data) ? payload.data : []);
+          state.rows = data.map(normalize);
+          state.lastSuccess = new Date();
+          $("#lastUpdated").textContent = state.lastSuccess.toLocaleTimeString("uk-UA",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+          setOnline();
+          render();
+          if (manual) showToast(`Оновлено · ${state.rows.length} ресторанів`);
+        } catch (err) {
+          const text = err?.name === "AbortError"
+            ? "Сервер не відповів за 10 секунд. Перевір Apps Script або інтернет."
+            : `Перевір Apps Script URL та доступ до нього. ${err?.message || ""}`.trim();
+          if (state.rows.length) {
+            $("#connectionText").textContent = "STALE";
+            $("#liveDot").classList.remove("pulse");
+            $("#liveDot").style.background = "var(--yellow)";
+            showToast("Не вдалося оновити. Показую останні отримані дані.");
+          } else {
+            showError(text);
+          }
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      function showToast(text) {
+        const toast = $("#toast");
+        toast.textContent = text;
+        toast.classList.add("show");
+        clearTimeout(showToast.t);
+        showToast.t = setTimeout(() => toast.classList.remove("show"), 2200);
+      }
+
+      function tickClock() {
+        const now = new Date();
+        $("#clock").textContent = now.toLocaleTimeString("uk-UA",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+        $("#dateLabel").textContent = now.toLocaleDateString("uk-UA",{weekday:"short",day:"2-digit",month:"short"}).replace(".","");
+        $$("[data-start]").forEach(el => el.textContent = timeAge(el.dataset.start));
+      }
+
+      $("#refreshBtn").addEventListener("click", () => loadData(true));
+      $("#searchInput").addEventListener("input", (e) => {
+        state.query = e.target.value;
+        render();
+      });
+      $("#sortSelect").addEventListener("change", (e) => {
+        state.sort = e.target.value;
+        render();
+      });
+      $("#filters").addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-filter]");
+        if (!btn) return;
+        state.filter = btn.dataset.filter;
+        $$(".chip").forEach(x => x.classList.toggle("active", x === btn));
+        render();
+      });
+
+      window.__opsReload = () => loadData(true);
+
+      // Telegram Mini App niceties. Safe in a normal browser too.
+      try {
+        const tg = window.Telegram?.WebApp;
+        if (tg) {
+          tg.ready();
+          tg.expand();
+          tg.setHeaderColor?.("#07101f");
+          tg.setBackgroundColor?.("#050914");
+        }
+      } catch (_) {}
+
+      tickClock();
+      setInterval(tickClock, 1000);
+      loadData();
+      state.timer = setInterval(() => loadData(false), REFRESH_MS);
+    })();
+  </script>
 </body>
 </html>
