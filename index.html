@@ -14,7 +14,7 @@ h1{font-size:16px;text-align:center;margin:0 0 12px;font-weight:800}.connection{
 
 .report{width:100%;max-width:440px;margin-top:24px;padding:16px;background:#1d1d21;border:1px solid #35353b;border-radius:16px}
 .report h2{font-size:17px;margin:0 0 8px}.report p{font-size:12px;color:#bbc3ce;line-height:1.5}
-.report table{width:100%;border-collapse:collapse;font-size:13px}.report th,.report td{padding:10px 4px;border-bottom:1px solid #35353b;text-align:left}.report th:last-child,.report td:last-child{text-align:right;white-space:nowrap}.report .stopped{color:#ffb56a;font-weight:700}
+.report table{width:100%;border-collapse:collapse;font-size:13px}.report th,.report td{padding:10px 4px;border-bottom:1px solid #35353b;text-align:left}.report th:last-child,.report td:last-child{text-align:right;white-space:normal;overflow-wrap:anywhere}.report .hours{font-size:11px;color:#aab5c4;margin-top:4px}.report .stopped{color:#ffb56a;font-weight:700}
 @media(min-width:760px){.grid{grid-template-columns:repeat(3,minmax(0,1fr));max-width:960px;gap:14px}.report,.connection{max-width:960px}.card{padding:16px}body{padding:24px}}
 </style>
 </head>
@@ -47,13 +47,21 @@ function renderReport(data){
   const parts=today.split('-').map(Number);
   const date=new Date(Date.UTC(parts[0],parts[1]-1,parts[2]-1)).toISOString().slice(0,10);
   box.append(el('h2','','Стопи за вчора · '+date.split('-').reverse().join('.')));
-  const complete=data.length===9 && data.every(x=>x.yesterday && x.yesterday.date===date && Number.isFinite(x.yesterday.seconds) && x.yesterday.seconds>=0);
+  const complete=data.length===9 && data.every(x=>x.yesterday && x.yesterday.date===date);
   if(!complete){box.append(el('p','','Звіт ще не готовий. Потрібне оновлення бота та Google Script; після запуску бот завантажить доступні повідомлення за вчора.'));return;}
-  box.append(el('p','','Сумарний час явного СТОП доставки або самовивозу, включно зі стопами через тривогу. Одночасні стопи рахуються один раз. Межі доби: 00:00–00:00, Київ.'));
+  box.append(el('p','','Сумарний час явного СТОП доставки або самовивозу, включно зі стопами через тривогу. Одночасні стопи рахуються один раз. Враховано лише робочі години з вкладки «Графік», за Києвом.'));
   const table=el('table','','');const head=el('thead','','');const hr=el('tr','','');hr.append(el('th','','Піцерія'),el('th','','Час на стопі'));head.append(hr);table.append(head);
   const body=el('tbody','','');
-  for(const item of data){const sec=item.yesterday.seconds;const mins=Math.floor(sec/60);const duration=sec===0?'0 хв':mins===0?'менше 1 хв':Math.floor(mins/60)+' год '+String(mins%60).padStart(2,'0')+' хв';const row=el('tr','','');row.append(el('td','','#'+item.num+' · '+item.address),el('td',sec?'stopped':'',duration));body.append(row);}
-  table.append(body);box.append(table,el('p','','За доступними повідомленнями Telegram. 0 хв означає, що явного стопу не зафіксовано. Видалені повідомлення та зміни без повідомлень не враховані. О 00:00 стоп завершується відповідно до щоденного скидання.'));
+  for(const item of data){
+    const r=item.yesterday;const sec=r.seconds;
+    const valid=['За графіком','Вихідний'].includes(r.scheduleStatus) && Number.isFinite(sec) && sec>=0;
+    const mins=valid?Math.floor(sec/60):0;
+    const duration=!valid?(['За графіком','Вихідний'].includes(r.scheduleStatus)?'Немає даних':r.scheduleStatus==='За доступними повідомленнями Telegram'?'Потрібне оновлення бота':r.scheduleStatus||'Графік не задано'):r.scheduleStatus==='Вихідний'?'Вихідний':sec===0?'0 хв':mins===0?'менше 1 хв':Math.floor(mins/60)+' год '+String(mins%60).padStart(2,'0')+' хв';
+    const row=el('tr','','');const name=el('td','','#'+item.num+' · '+item.address);
+    if(r.hours && r.hours!=='Вихідний')name.append(el('div','hours',r.hours));
+    row.append(name,el('td',valid&&sec?'stopped':'',duration));body.append(row);
+  }
+  table.append(body);box.append(table,el('p','','За доступними повідомленнями Telegram. 0 хв означає, що явного стопу не зафіксовано. Видалені повідомлення та зміни без повідомлень не враховані. Час до відкриття та після закриття не враховується. Порожній графік не означає 0 хв; заповніть вкладку «Графік».'));
 }
 async function loadData(){
   if(loading)return;
