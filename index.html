@@ -219,7 +219,7 @@
     .restaurant.warning{--state:var(--yellow)}
     .restaurant.danger-hour{--state:var(--red)}
     .restaurant.alarm-blue{--state:var(--blue-2)}
-    .restaurant.danger-stop{--state:var(--violet)}
+    .restaurant.danger-stop{--state:var(--red)}
     .restaurant-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
     .rest-id{display:flex;gap:11px;min-width:0}
     .rest-num{
@@ -586,7 +586,7 @@
     </section>
 
     <footer class="footer">
-      <span>OPS CONTROL · Internal Operations · BUILD 5.1</span>
+      <span>OPS CONTROL · Internal Operations · BUILD 5.2</span>
       <span>Auto refresh · 15 sec</span>
     </footer>
   </main>
@@ -681,20 +681,23 @@
         let icon = icons.check;
         let risk = 1;
 
-        if (isStop) {
+        if (isAlarm) {
+          // Синій зарезервований тільки для повітряної тривоги.
+          // Якщо під час тривоги є СТОП — це все одно синя картка.
+          uiClass = "alarm-blue";
+          group = "alarm";
+          label = isStop ? "СТОП · ТРИВОГА" : "Тривога";
+          issueTitle = isStop ? "СТОП через повітряну тривогу" : "Повітряна тривога";
+          icon = icons.alarm;
+          risk = isStop ? 5 : 3;
+        } else if (isStop) {
+          // Звичайний операційний СТОП — червоний.
           uiClass = "danger-stop";
           group = "stop";
           label = "СТОП";
           issueTitle = "Ресторан на СТОПІ";
           icon = icons.stop;
           risk = 5;
-        } else if (isAlarm) {
-          uiClass = "alarm-blue";
-          group = "alarm";
-          label = "Тривога";
-          issueTitle = "Повітряна тривога";
-          icon = icons.alarm;
-          risk = 3;
         } else if (isWarning) {
           uiClass = "warning";
           group = "warning";
@@ -738,15 +741,78 @@
         return "var(--green)";
       }
 
-      function timeAge(timeText) {
-        if (!timeText) return "";
-        const m = String(timeText).match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
-        if (!m) return "";
-        const now = new Date();
-        const start = new Date(now);
-        start.setHours(Number(m[1]), Number(m[2]), Number(m[3] || 0), 0);
-        if (start - now > 60 * 60 * 1000) start.setDate(start.getDate() - 1);
-        const sec = Math.max(0, Math.floor((now - start) / 1000));
+      function parseTimestamp(value) {
+        if (!value) return null;
+        const s = String(value).trim();
+        if (!s) return null;
+
+        // ISO / Google date strings
+        const direct = new Date(s);
+        if (!Number.isNaN(direct.getTime())) return direct.getTime();
+
+        // HH:MM[:SS] fallback
+        const m = s.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+        if (!m) return null;
+        const d = new Date();
+        d.setHours(Number(m[1]), Number(m[2]), Number(m[3] || 0), 0);
+        if (d.getTime() - Date.now() > 60 * 60 * 1000) d.setDate(d.getDate() - 1);
+        return d.getTime();
+      }
+
+      function timerStateKey(r) {
+        if (r.isAlarm) return r.isStop ? "alarm-stop" : "alarm";
+        if (r.isStop) return "stop";
+        if (r.isWarning) return "warning";
+        return "normal";
+      }
+
+      function timerStorageKey(r) {
+        return `ops_timer_v52_${String(r.num ?? r.address ?? "unknown")}`;
+      }
+
+      function resolveStateTimer(r) {
+        const currentState = timerStateKey(r);
+        const storageKey = timerStorageKey(r);
+
+        // Норма не має активного таймера проблеми.
+        if (currentState === "normal") {
+          try { localStorage.removeItem(storageKey); } catch (_) {}
+          return null;
+        }
+
+        let saved = null;
+        try {
+          saved = JSON.parse(localStorage.getItem(storageKey) || "null");
+        } catch (_) {
+          saved = null;
+        }
+
+        // Якщо колір/стан змінився — починаємо НОВИЙ таймер.
+        if (!saved || saved.state !== currentState) {
+          const candidate =
+            parseTimestamp(r.messageTime) ??
+            parseTimestamp(r.statusTime) ??
+            Date.now();
+
+          saved = {
+            state: currentState,
+            startedAt: candidate,
+            updatedAt: Date.now()
+          };
+
+          try { localStorage.setItem(storageKey, JSON.stringify(saved)); } catch (_) {}
+          return saved.startedAt;
+        }
+
+        // Той самий статус: таймер продовжується, навіть після перезавантаження сторінки.
+        saved.updatedAt = Date.now();
+        try { localStorage.setItem(storageKey, JSON.stringify(saved)); } catch (_) {}
+        return Number(saved.startedAt) || Date.now();
+      }
+
+      function timeAgeFromMs(startMs) {
+        if (!startMs) return "";
+        const sec = Math.max(0, Math.floor((Date.now() - Number(startMs)) / 1000));
         const h = Math.floor(sec / 3600);
         const min = Math.floor((sec % 3600) / 60);
         if (h > 0) return `${h}г ${String(min).padStart(2,"0")}хв`;
@@ -757,8 +823,11 @@
         const deliveryBar = thresholdWidth(r.deliveryMin, 30, 60);
         const pickupBar = thresholdWidth(r.pickupMin, 15, 45);
         const reason = r.reasonRaw || r.statusRaw || "Без активних відхилень";
-        const elapsed = (r.risk > 1 || r.isAlarm || r.isStop) ? timeAge(r.time) : "";
-        const freshLabel = r.time ? `дані ${escapeHtml(r.time)}` : "актуальні дані";
+        const timerStartMs = (r.risk > 1 || r.isAlarm || r.isStop) ? resolveStateTimer(r) : null;
+        const elapsed = timerStartMs ? timeAgeFromMs(timerStartMs) : "";
+        const freshLabel = r.messageTime
+          ? `статус ${escapeHtml(r.messageTime)}`
+          : (r.time ? `дані ${escapeHtml(r.time)}` : "актуальні дані");
 
         return `
           <article class="restaurant ${r.uiClass}" data-num="${escapeHtml(r.num)}">
@@ -796,7 +865,7 @@
                 <div class="issue-title">${escapeHtml(r.issueTitle)}</div>
                 <div class="issue-reason">${escapeHtml(reason)}</div>
               </div>
-              ${elapsed ? `<div class="timer" data-start="${escapeHtml(r.time || "")}">${elapsed}</div>` : ""}
+              ${elapsed ? `<div class="timer" data-start-ms="${timerStartMs}">${elapsed}</div>` : ""}
             </div>
 
             <div class="card-foot">
@@ -1351,7 +1420,7 @@
         const now = new Date();
         $("#clock").textContent = now.toLocaleTimeString("uk-UA",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
         $("#dateLabel").textContent = now.toLocaleDateString("uk-UA",{weekday:"short",day:"2-digit",month:"short"}).replace(".","");
-        $$("[data-start]").forEach(el => el.textContent = timeAge(el.dataset.start));
+        $$("[data-start-ms]").forEach(el => el.textContent = timeAgeFromMs(Number(el.dataset.startMs)));
       }
 
       $("#refreshBtn").addEventListener("click", () => loadData(true));
