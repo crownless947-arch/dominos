@@ -586,7 +586,7 @@
     </section>
 
     <footer class="footer">
-      <span>OPS CONTROL · Internal Operations</span>
+      <span>OPS CONTROL · Internal Operations · BUILD 5.1</span>
       <span>Auto refresh · 15 sec</span>
     </footer>
   </main>
@@ -1257,29 +1257,83 @@
         }
 
         setLoading(true);
+
+        // 1) LIVE — старий, перевірений формат. Він не залежить від статистики.
         try {
-          const payload = await fetchJson(googleScriptUrl);
-          const extracted = extractRows(payload);
-          state.rows = extracted.live.map(normalize);
-          state.yesterdayRows = extracted.yesterday;
+          const livePayload = await fetchJson(googleScriptUrl);
+          const liveRows = Array.isArray(livePayload)
+            ? livePayload
+            : Array.isArray(livePayload?.live)
+              ? livePayload.live
+              : Array.isArray(livePayload?.data)
+                ? livePayload.data
+                : [];
+
+          state.rows = liveRows.map(normalize);
           state.lastSuccess = new Date();
-          $("#lastUpdated").textContent = state.lastSuccess.toLocaleTimeString("uk-UA",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+
+          $("#lastUpdated").textContent = state.lastSuccess.toLocaleTimeString(
+            "uk-UA",
+            {hour:"2-digit",minute:"2-digit",second:"2-digit"}
+          );
+
           setOnline();
           render();
-          renderYesterday();
-          if (manual) showToast(`Оновлено · ${state.rows.length} ресторанів`);
+
+          if (manual) {
+            showToast(`Оновлено · ${state.rows.length} ресторанів`);
+          }
         } catch (err) {
-          const text = err?.name === "AbortError"
-            ? "Сервер не відповів за 10 секунд. Перевір Apps Script або інтернет."
-            : `Перевір Apps Script URL та доступ до нього. ${err?.message || ""}`.trim();
+          const message = err?.name === "AbortError"
+            ? "Live API не відповів за 10 секунд."
+            : `Не вдалося отримати live: ${err?.message || ""}`.trim();
+
           if (state.rows.length) {
             $("#connectionText").textContent = "STALE";
             $("#liveDot").classList.remove("pulse");
             $("#liveDot").style.background = "var(--yellow)";
-            showToast("Не вдалося оновити. Показую останні отримані дані.");
+            showToast("Live не оновився. Показую останні дані.");
           } else {
-            showError(text);
+            showError(message);
           }
+        }
+
+        // 2) REPORT — окремий запит. Навіть якщо він впаде,
+        // live-картки продовжують працювати.
+        try {
+          const separator = googleScriptUrl.includes("?") ? "&" : "?";
+          const reportUrl = `${googleScriptUrl}${separator}mode=report&_=${Date.now()}`;
+          const reportPayload = await fetchJson(reportUrl);
+
+          let reportRows = [];
+
+          if (Array.isArray(reportPayload)) {
+            reportRows = reportPayload;
+          } else if (Array.isArray(reportPayload?.rows)) {
+            reportRows = reportPayload.rows;
+          } else if (Array.isArray(reportPayload?.yesterday)) {
+            reportRows = reportPayload.yesterday;
+          } else if (Array.isArray(reportPayload?.report)) {
+            reportRows = reportPayload.report;
+          }
+
+          state.yesterdayRows = reportRows.map(r => ({
+            kind: "daily-report",
+            reportDate: r.reportDate ?? r.date ?? "",
+            num: r.num ?? r.number ?? "",
+            address: r.address ?? "",
+            stopSeconds: Number(r.stopSeconds ?? r.secondsOnStop ?? 0) || 0,
+            checked: r.checked ?? "",
+            reportStatus: r.reportStatus ?? r.status ?? "",
+            workHours: r.workHours ?? ""
+          }));
+
+          renderYesterday();
+        } catch (reportErr) {
+          // Статистика не має права ламати live.
+          state.yesterdayRows = [];
+          renderYesterday();
+          console.warn("Report API error:", reportErr);
         } finally {
           setLoading(false);
         }
