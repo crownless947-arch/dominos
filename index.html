@@ -290,30 +290,86 @@
     .sk-big{height:54px;border-radius:14px;background:rgba(255,255,255,.045);margin-top:15px}
 
     .yesterday{
-      margin-top:26px;border:1px solid var(--line);border-radius:26px;padding:20px;
-      background:linear-gradient(145deg,rgba(18,28,47,.82),rgba(9,16,29,.88));
+      margin-top:26px;border:1px solid var(--line);border-radius:28px;padding:22px;
+      background:
+        radial-gradient(560px 220px at 8% -20%,rgba(47,124,255,.13),transparent 65%),
+        linear-gradient(145deg,rgba(18,28,47,.86),rgba(9,16,29,.92));
       box-shadow:0 18px 48px rgba(0,0,0,.18);
     }
-    .yesterday-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-end;margin-bottom:14px}
+    .yesterday-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-end;margin-bottom:16px}
     .yesterday-kicker{font-size:10px;font-weight:850;letter-spacing:.14em;text-transform:uppercase;color:#83b7ff}
-    .yesterday-title{font-size:20px;font-weight:900;letter-spacing:-.025em;margin-top:5px}
+    .yesterday-title{font-size:22px;font-weight:900;letter-spacing:-.03em;margin-top:5px}
     .yesterday-date{font-size:10px;color:var(--muted);white-space:nowrap}
-    .y-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
-    .y-stat{border:1px solid var(--line);border-radius:17px;padding:14px;background:rgba(255,255,255,.028)}
-    .y-stat-label{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;font-weight:750}
-    .y-stat-value{font-size:25px;font-weight:900;letter-spacing:-.04em;margin-top:7px;font-variant-numeric:tabular-nums}
-    .y-stat-note{font-size:9px;color:var(--muted-2);margin-top:2px}
-    .y-ranking{margin-top:14px;border:1px solid var(--line);border-radius:18px;overflow:hidden;background:rgba(0,0,0,.10)}
-    .y-ranking-head{display:grid;grid-template-columns:42px minmax(0,1fr) 90px 82px;gap:8px;padding:10px 12px;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.07em;border-bottom:1px solid var(--line)}
-    .y-row{display:grid;grid-template-columns:42px minmax(0,1fr) 90px 82px;gap:8px;align-items:center;padding:11px 12px;border-bottom:1px solid rgba(255,255,255,.045);font-size:11px}
-    .y-row:last-child{border-bottom:0}
-    .y-rank{font-weight:900;color:#8fa0b7}
-    .y-place{min-width:0}
-    .y-place strong{display:block;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .y-place span{display:block;color:var(--muted);font-size:9px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .y-badge{justify-self:start;border-radius:999px;padding:5px 8px;background:rgba(255,189,61,.08);border:1px solid rgba(255,189,61,.12);color:#ffd67c;font-size:9px;font-weight:800}
-    .y-max{text-align:right;font-weight:850;font-variant-numeric:tabular-nums}
-    .y-empty{padding:22px;text-align:center;color:var(--muted);font-size:11px}
+    .y-summary{
+      display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:14px
+    }
+    .y-summary-card{
+      border:1px solid var(--line);border-radius:17px;padding:13px 14px;
+      background:rgba(255,255,255,.027)
+    }
+    .y-summary-label{
+      font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;font-weight:800
+    }
+    .y-summary-value{
+      font-size:23px;font-weight:900;letter-spacing:-.035em;margin-top:7px;font-variant-numeric:tabular-nums
+    }
+    .y-summary-note{font-size:9px;color:var(--muted-2);margin-top:2px}
+    .stop-report-grid{
+      display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px
+    }
+    .stop-report-card{
+      --stop-state:var(--green);
+      position:relative;overflow:hidden;min-height:146px;
+      border:1px solid var(--line);border-radius:19px;padding:14px;
+      background:linear-gradient(180deg,rgba(255,255,255,.036),rgba(255,255,255,.018));
+    }
+    .stop-report-card.has-stop{--stop-state:var(--red)}
+    .stop-report-card:before{
+      content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--stop-state)
+    }
+    .stop-report-card:after{
+      content:"";position:absolute;width:100px;height:100px;right:-44px;top:-50px;border-radius:50%;
+      background:var(--stop-state);filter:blur(40px);opacity:.08;pointer-events:none
+    }
+    .stop-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+    .stop-store{display:flex;gap:10px;min-width:0}
+    .stop-num{
+      width:39px;height:39px;border-radius:12px;display:grid;place-items:center;flex:0 0 auto;
+      border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.045);
+      font-size:12px;font-weight:900
+    }
+    .stop-store-text{min-width:0}
+    .stop-address{
+      font-size:12px;font-weight:850;white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+    }
+    .stop-hours{font-size:9px;color:var(--muted);margin-top:4px}
+    .stop-badge{
+      flex:0 0 auto;border-radius:999px;padding:5px 8px;
+      color:var(--stop-state);
+      border:1px solid color-mix(in srgb,var(--stop-state) 18%,transparent);
+      background:color-mix(in srgb,var(--stop-state) 8%,transparent);
+      font-size:8px;font-weight:850;text-transform:uppercase;letter-spacing:.06em
+    }
+    .stop-time-label{
+      margin-top:16px;font-size:9px;text-transform:uppercase;letter-spacing:.08em;
+      color:var(--muted);font-weight:800
+    }
+    .stop-time{
+      margin-top:4px;font-size:24px;font-weight:950;letter-spacing:-.04em;
+      color:#f7f9fc;font-variant-numeric:tabular-nums
+    }
+    .stop-time.zero{color:#c8d2df}
+    .stop-meter{
+      height:4px;border-radius:999px;background:rgba(255,255,255,.055);overflow:hidden;margin-top:10px
+    }
+    .stop-meter span{
+      display:block;height:100%;width:var(--w);border-radius:inherit;background:var(--stop-state);
+      box-shadow:0 0 12px color-mix(in srgb,var(--stop-state) 55%,transparent)
+    }
+    .y-empty{
+      grid-column:1/-1;padding:26px;text-align:center;color:var(--muted);font-size:11px;
+      border:1px solid var(--line);border-radius:18px;background:rgba(0,0,0,.10)
+    }
 
     .footer{
       display:flex;justify-content:space-between;gap:16px;align-items:center;margin:22px 2px 0;
@@ -363,12 +419,11 @@
       .setup-form{flex-direction:column}
       .setup-form .retry{margin-top:0}
       .yesterday{padding:15px;border-radius:22px}
-      .y-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
       .yesterday-head{align-items:flex-start}
-      .y-ranking-head{grid-template-columns:32px minmax(0,1fr) 72px}
-      .y-ranking-head span:nth-child(3){display:none}
-      .y-row{grid-template-columns:32px minmax(0,1fr) 72px}
-      .y-row .y-badge{display:none}
+      .y-summary{grid-template-columns:1fr 1fr}
+      .y-summary-card:last-child{grid-column:1/-1}
+      .stop-report-grid{grid-template-columns:1fr}
+      .stop-report-card{min-height:136px}
     }
     @media (max-width:390px){
       .brand-sub{display:none}
@@ -501,38 +556,32 @@
     <section class="yesterday" id="yesterdaySection">
       <div class="yesterday-head">
         <div>
-          <div class="yesterday-kicker">Daily performance</div>
-          <div class="yesterday-title">Статистика за вчора</div>
+          <div class="yesterday-kicker">Daily stop report</div>
+          <div class="yesterday-title">СТОП по піцеріях за день</div>
         </div>
         <div class="yesterday-date" id="yesterdayDate">—</div>
       </div>
 
-      <div class="y-stats">
-        <div class="y-stat">
-          <div class="y-stat-label">Ресторанів</div>
-          <div class="y-stat-value" id="yRecords">—</div>
-          <div class="y-stat-note">у звіті за день</div>
+      <div class="y-summary">
+        <div class="y-summary-card">
+          <div class="y-summary-label">Піцерій у звіті</div>
+          <div class="y-summary-value" id="yStores">—</div>
+          <div class="y-summary-note">усі ресторани за графіком</div>
         </div>
-        <div class="y-stat">
-          <div class="y-stat-label">Були на СТОПІ</div>
-          <div class="y-stat-value" id="yAttention">—</div>
-          <div class="y-stat-note">ресторанів із часом &gt; 0</div>
+        <div class="y-summary-card">
+          <div class="y-summary-label">Були на СТОПІ</div>
+          <div class="y-summary-value" id="yStoppedStores">—</div>
+          <div class="y-summary-note">час на стопі більше 0</div>
         </div>
-        <div class="y-stat">
-          <div class="y-stat-label">Час на СТОПІ</div>
-          <div class="y-stat-value" id="yStops">—</div>
-          <div class="y-stat-note">сумарно за день</div>
-        </div>
-        <div class="y-stat">
-          <div class="y-stat-label">Найдовший СТОП</div>
-          <div class="y-stat-value" id="yMaxDelivery">—</div>
-          <div class="y-stat-note">максимум по ресторану</div>
+        <div class="y-summary-card">
+          <div class="y-summary-label">Загальний СТОП</div>
+          <div class="y-summary-value" id="yTotalStop">—</div>
+          <div class="y-summary-note">сума по всіх піцеріях</div>
         </div>
       </div>
 
-      <div class="y-ranking" id="yRanking">
-        <div class="y-ranking-head"><span>#</span><span>Ресторан</span><span>Стан звіту</span><span style="text-align:right">На СТОПІ</span></div>
-        <div class="y-empty">Завантаження статистики…</div>
+      <div class="stop-report-grid" id="stopReportGrid">
+        <div class="y-empty">Завантаження звіту по піцеріях…</div>
       </div>
     </section>
 
@@ -946,8 +995,21 @@
 
         for (const row of uniqueObjects) {
           const rr = reportRow(row);
-          if (rr && dayKey(parseDateValue(rr.reportDate)) === yesterdayKey()) reportRows.push(rr);
+          if (rr) reportRows.push(rr);
         }
+
+        // Беремо останню реально наявну дату звіту з API,
+        // а не покладаємося на календар телефону/Telegram.
+        let latestReportKey = "";
+        const reportKeys = reportRows
+          .map(r => dayKey(parseDateValue(r.reportDate)))
+          .filter(Boolean)
+          .sort();
+        if (reportKeys.length) latestReportKey = reportKeys[reportKeys.length - 1];
+
+        const latestReportRows = latestReportKey
+          ? reportRows.filter(r => dayKey(parseDateValue(r.reportDate)) === latestReportKey)
+          : reportRows;
 
         // Explicit live keys still get priority.
         const explicitLive = payload && !Array.isArray(payload)
@@ -969,7 +1031,7 @@
         }
 
         // Fallback for the older event-history format.
-        let yesterday = reportRows;
+        let yesterday = latestReportRows;
         if (!yesterday.length) {
           yesterday = uniqueObjects.filter(r => {
             if (!liveRow(r)) return false;
@@ -990,83 +1052,72 @@
         return `${sec}с`;
       }
 
-      function renderYesterday() {
-        const yd = new Date();
-        yd.setDate(yd.getDate()-1);
-        $("#yesterdayDate").textContent = yd.toLocaleDateString("uk-UA",{day:"2-digit",month:"long",year:"numeric"});
+      function formatReportDate(raw) {
+        const d = parseDateValue(raw);
+        if (!d) return String(raw || "—");
+        return d.toLocaleDateString("uk-UA",{day:"2-digit",month:"long",year:"numeric"});
+      }
 
+      function compactDuration(totalSeconds) {
+        const s = Math.max(0, Math.round(Number(totalSeconds) || 0));
+        const h = Math.floor(s / 3600);
+        const m = Math.floor((s % 3600) / 60);
+        const sec = s % 60;
+        if (h > 0 && m > 0) return `${h} год ${m} хв`;
+        if (h > 0) return `${h} год`;
+        if (m > 0) return `${m} хв`;
+        return sec > 0 ? `${sec} с` : "0 хв";
+      }
+
+      function renderYesterday() {
         const raw = state.yesterdayRows || [];
         const report = raw.filter(r => r?.kind === "daily-report");
 
-        if (report.length) {
-          const affected = report.filter(r => r.stopSeconds > 0);
-          const totalSeconds = report.reduce((sum,r) => sum + r.stopSeconds, 0);
-          const maxSeconds = report.reduce((m,r) => Math.max(m,r.stopSeconds), 0);
+        if (!report.length) {
+          $("#yesterdayDate").textContent = "останній звіт";
+          $("#yStores").textContent = "0";
+          $("#yStoppedStores").textContent = "0";
+          $("#yTotalStop").textContent = "0 хв";
+          $("#stopReportGrid").innerHTML =
+            `<div class="y-empty">API ще не передав блок щоденного звіту з Monitoring_Live.</div>`;
+          return;
+        }
 
-          $("#yRecords").textContent = report.length;
-          $("#yAttention").textContent = affected.length;
-          $("#yStops").textContent = formatDuration(totalSeconds);
-          $("#yMaxDelivery").textContent = maxSeconds ? formatDuration(maxSeconds) : "0с";
+        const dateRaw = report.find(r => r.reportDate)?.reportDate;
+        $("#yesterdayDate").textContent = formatReportDate(dateRaw);
 
-          const ranking = [...report].sort((a,b) => b.stopSeconds - a.stopSeconds || numberValue(a.num)-numberValue(b.num));
+        const sorted = [...report].sort((a,b) => numberValue(a.num) - numberValue(b.num));
+        const affected = sorted.filter(r => Number(r.stopSeconds) > 0);
+        const totalSeconds = sorted.reduce((sum,r) => sum + (Number(r.stopSeconds) || 0), 0);
+        const maxSeconds = sorted.reduce((m,r) => Math.max(m,Number(r.stopSeconds)||0),0);
 
-          const header = `<div class="y-ranking-head"><span>#</span><span>Ресторан</span><span>Стан звіту</span><span style="text-align:right">На СТОПІ</span></div>`;
-          const body = ranking.map((r,i) => {
-            const status = r.reportStatus || (r.stopSeconds > 0 ? "Був СТОП" : "За графіком");
-            const detail = [r.workHours, r.checked ? `перевірено ${r.checked}` : ""].filter(Boolean).join(" · ");
-            return `<div class="y-row">
-              <div class="y-rank">${String(i+1).padStart(2,"0")}</div>
-              <div class="y-place">
-                <strong>${escapeHtml(r.num || "—")} · ${escapeHtml(r.address || "Ресторан")}</strong>
-                <span>${escapeHtml(detail || "щоденний звіт")}</span>
+        $("#yStores").textContent = sorted.length;
+        $("#yStoppedStores").textContent = affected.length;
+        $("#yTotalStop").textContent = compactDuration(totalSeconds);
+
+        $("#stopReportGrid").innerHTML = sorted.map(r => {
+          const seconds = Math.max(0, Number(r.stopSeconds) || 0);
+          const hasStop = seconds > 0;
+          const width = maxSeconds > 0 ? Math.max(hasStop ? 6 : 0, Math.round((seconds / maxSeconds) * 100)) : 0;
+          const status = hasStop ? "Був на СТОПІ" : (r.reportStatus || "За графіком");
+          const hours = r.workHours || "графік не вказано";
+
+          return `<article class="stop-report-card ${hasStop ? "has-stop" : ""}">
+            <div class="stop-card-top">
+              <div class="stop-store">
+                <div class="stop-num">${escapeHtml(r.num || "—")}</div>
+                <div class="stop-store-text">
+                  <div class="stop-address">${escapeHtml(r.address || "Піцерія")}</div>
+                  <div class="stop-hours">Графік: ${escapeHtml(hours)}</div>
+                </div>
               </div>
-              <div class="y-badge">${escapeHtml(status)}</div>
-              <div class="y-max">${r.stopSeconds ? formatDuration(r.stopSeconds) : "0с"}</div>
-            </div>`;
-          }).join("");
-
-          $("#yRanking").innerHTML = header + body;
-          return;
-        }
-
-        // Backward compatibility: if the API still sends yesterday as live-event history.
-        const rows = raw.map(normalize);
-        $("#yRecords").textContent = rows.length || "0";
-        const attention = rows.filter(r => !r.isStop && !r.isAlarm && r.deliveryMin >= 55);
-        const stops = rows.filter(r => r.isStop);
-        const maxDelivery = rows.reduce((m,r) => Math.max(m, r.deliveryMin < 9000 ? r.deliveryMin : 0), 0);
-        $("#yAttention").textContent = attention.length;
-        $("#yStops").textContent = stops.length ? `${stops.length} СТОП` : "0";
-        $("#yMaxDelivery").textContent = maxDelivery ? `${maxDelivery} хв` : "—";
-
-        if (!rows.length) {
-          $("#yRanking").innerHTML = `<div class="y-empty">Звіт за вчора поки не переданий сторінці.</div>`;
-          return;
-        }
-
-        const byRestaurant = new Map();
-        rows.forEach(r => {
-          const key = String(r.num ?? r.address ?? "—");
-          if (!byRestaurant.has(key)) byRestaurant.set(key,{num:r.num,address:r.address,attention:0,stops:0,alarms:0,max:0,score:0});
-          const x = byRestaurant.get(key);
-          if (r.isStop) {x.stops++; x.score += 6;}
-          else if (r.isAlarm) {x.alarms++; x.score += 3;}
-          else if (r.deliveryMin >= 55) {x.attention++; x.score += 2;}
-          x.max = Math.max(x.max, r.deliveryMin < 9000 ? r.deliveryMin : 0);
-        });
-
-        const ranking = [...byRestaurant.values()].sort((a,b) => b.score-a.score || b.max-a.max).slice(0,9);
-        const header = `<div class="y-ranking-head"><span>#</span><span>Ресторан</span><span>Статус</span><span style="text-align:right">Макс. час</span></div>`;
-        const body = ranking.map((r,i) => {
-          const status = r.stops ? `${r.stops} СТОП` : r.alarms ? `${r.alarms} трив.` : r.attention ? `${r.attention} увага` : "Норма";
-          return `<div class="y-row">
-            <div class="y-rank">${String(i+1).padStart(2,"0")}</div>
-            <div class="y-place"><strong>${escapeHtml(r.num || "—")} · ${escapeHtml(r.address || "Ресторан")}</strong><span>${r.attention} увага · ${r.stops} стоп · ${r.alarms} тривога</span></div>
-            <div class="y-badge">${escapeHtml(status)}</div>
-            <div class="y-max">${r.max ? `${r.max} хв` : "—"}</div>
-          </div>`;
+              <div class="stop-badge">${escapeHtml(status)}</div>
+            </div>
+            <div class="stop-time-label">Час на СТОПІ за графіком</div>
+            <div class="stop-time ${hasStop ? "" : "zero"}">${compactDuration(seconds)}</div>
+            <div class="stop-meter"><span style="--w:${width}%"></span></div>
+          </article>`;
         }).join("");
-        $("#yRanking").innerHTML = header + body;
       }
 
       function updateSummary() {
