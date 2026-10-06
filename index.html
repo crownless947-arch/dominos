@@ -207,6 +207,7 @@
     .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
     .restaurant{
       position:relative;overflow:hidden;border-radius:22px;border:1px solid var(--line);
+      cursor:pointer;
       background:linear-gradient(180deg,rgba(18,28,47,.94),rgba(11,18,31,.94));
       box-shadow:0 12px 38px rgba(0,0,0,.16);
       min-height:244px;padding:17px;transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease;
@@ -375,6 +376,23 @@
       display:flex;justify-content:space-between;gap:16px;align-items:center;margin:22px 2px 0;
       color:#4c596e;font-size:9px;text-transform:uppercase;letter-spacing:.09em
     }
+
+
+    .stop-modal-backdrop{position:fixed;inset:0;z-index:120;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(2,7,15,.78);backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px)}
+    .stop-modal-backdrop.open{display:flex}
+    .stop-modal{width:min(820px,100%);max-height:90vh;overflow:auto;border-radius:24px;border:1px solid var(--line-strong);background:linear-gradient(180deg,#101a2c,#09111f);box-shadow:0 32px 90px rgba(0,0,0,.55)}
+    .stop-modal-head{position:sticky;top:0;z-index:2;display:flex;justify-content:space-between;gap:14px;align-items:flex-start;padding:18px;border-bottom:1px solid var(--line);background:rgba(12,21,36,.96);backdrop-filter:blur(12px)}
+    .stop-modal-kicker{font-size:9px;color:#83b7ff;text-transform:uppercase;letter-spacing:.12em;font-weight:850}
+    .stop-modal-title{font-size:21px;font-weight:950;letter-spacing:-.03em;margin-top:4px}.stop-modal-sub{font-size:10px;color:var(--muted);margin-top:4px}
+    .stop-modal-close{width:38px;height:38px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--text);cursor:pointer;flex:0 0 auto}
+    .stop-modal-body{padding:18px}.stop-detail-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+    .stop-detail-kpi{border:1px solid var(--line);border-radius:16px;padding:13px;background:rgba(255,255,255,.025)}
+    .stop-detail-label{font-size:8px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.08em}.stop-detail-value{font-size:23px;font-weight:950;letter-spacing:-.04em;margin-top:6px}.stop-detail-note{font-size:8px;color:var(--muted-2);margin-top:3px}
+    .stop-history-section{margin-top:18px}.stop-history-heading{font-size:12px;font-weight:900;margin-bottom:9px}.stop-events{display:grid;gap:8px}
+    .stop-event{display:grid;grid-template-columns:90px 135px 90px minmax(0,1fr);gap:10px;align-items:center;border:1px solid rgba(255,255,255,.06);border-radius:13px;padding:10px 11px;background:rgba(255,255,255,.02)}
+    .stop-event.open{border-color:rgba(255,69,93,.22);background:rgba(255,69,93,.045)}.stop-event-date{font-size:9px;color:var(--muted)}.stop-event-period{font-size:10px;font-weight:850;font-variant-numeric:tabular-nums}.stop-event-duration{font-size:10px;font-weight:900;color:#ff91a0}.stop-event-reason{font-size:9px;color:#b9c5d6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .stop-detail-empty{padding:20px;border:1px dashed var(--line);border-radius:14px;text-align:center;color:var(--muted);font-size:10px}.stop-detail-loading{padding:34px;text-align:center;color:var(--muted);font-size:11px}.click-hint{font-size:8px;color:#536177;margin-left:auto}
+    @media(max-width:680px){.stop-detail-kpis{grid-template-columns:1fr 1fr}.stop-detail-kpi:last-child{grid-column:1/-1}.stop-event{grid-template-columns:80px 1fr auto}.stop-event-reason{grid-column:1/-1}}
 
     .toast{
       position:fixed;left:50%;bottom:calc(22px + var(--safe-bottom));transform:translate(-50%,20px);
@@ -586,10 +604,18 @@
     </section>
 
     <footer class="footer">
-      <span>OPS CONTROL · Internal Operations · BUILD 5.2</span>
+      <span>OPS CONTROL · Internal Operations · BUILD 5.3 · STOP HISTORY</span>
       <span>Auto refresh · 15 sec</span>
     </footer>
   </main>
+
+
+  <div class="stop-modal-backdrop" id="stopModalBackdrop" aria-hidden="true">
+    <div class="stop-modal" role="dialog" aria-modal="true">
+      <div class="stop-modal-head"><div><div class="stop-modal-kicker">STOP history</div><div class="stop-modal-title" id="stopModalTitle">Піцерія</div><div class="stop-modal-sub" id="stopModalSub">Періоди STOP та підсумок за місяць</div></div><button class="stop-modal-close" id="stopModalClose" type="button">✕</button></div>
+      <div class="stop-modal-body" id="stopModalBody"><div class="stop-detail-loading">Завантаження історії STOP…</div></div>
+    </div>
+  </div>
 
   <div class="toast" id="toast"></div>
 
@@ -870,7 +896,7 @@
 
             <div class="card-foot">
               <div class="fresh"><i></i>${freshLabel}</div>
-              <div>${r.risk >= 4 ? "Priority P1" : r.risk === 2 ? "Priority P2" : "Stable"}</div>
+              <div class="click-hint">Натисни · історія STOP</div>
             </div>
           </article>
         `;
@@ -1408,6 +1434,30 @@
         }
       }
 
+
+      function currentMonthKey(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;}
+      function clockPart(value){if(!value)return "зараз";const m=String(value).match(/(\d{2}):(\d{2})(?::\d{2})?/);return m?`${m[1]}:${m[2]}`:String(value);}
+      function shortDate(value){const m=String(value||"").match(/^(\d{4})-(\d{2})-(\d{2})/);return m?`${m[3]}.${m[2]}`:String(value||"—");}
+      function monthTitle(key){const [y,m]=String(key||"").split("-").map(Number);return y&&m?new Date(y,m-1,1).toLocaleDateString("uk-UA",{month:"long",year:"numeric"}):(key||"");}
+      function closeStopModal(){const el=$("#stopModalBackdrop");el.classList.remove("open");el.setAttribute("aria-hidden","true");}
+      async function openStopModal(num){
+        const cleanNum=String(num||"").replace("#","");
+        const row=state.rows.find(r=>String(r.num||"").replace("#","")===cleanNum);
+        $("#stopModalTitle").textContent=`#${cleanNum} ${row?.address||"Піцерія"}`;
+        $("#stopModalSub").textContent="Періоди STOP та підсумок за місяць";
+        $("#stopModalBody").innerHTML=`<div class="stop-detail-loading">Завантаження історії STOP…</div>`;
+        const backdrop=$("#stopModalBackdrop");backdrop.classList.add("open");backdrop.setAttribute("aria-hidden","false");
+        if(!googleScriptUrl){$("#stopModalBody").innerHTML=`<div class="stop-detail-empty">API не підключено.</div>`;return;}
+        try{
+          const sep=googleScriptUrl.includes("?")?"&":"?",month=currentMonthKey();
+          const data=await fetchJson(`${googleScriptUrl}${sep}mode=stopdetails&num=${encodeURIComponent(cleanNum)}&month=${encodeURIComponent(month)}&_=${Date.now()}`);
+          if(!data?.ok)throw new Error(data?.error||"Не вдалося прочитати STOP_History");
+          const events=Array.isArray(data.events)?data.events:[],todayEvents=Array.isArray(data.todayEvents)?data.todayEvents:[];
+          const eventRows=events.length?events.map(ev=>`<div class="stop-event ${ev.isOpen?"open":""}"><div class="stop-event-date">${shortDate(ev.date)}</div><div class="stop-event-period">${clockPart(ev.start)} → ${ev.isOpen?"зараз":clockPart(ev.end)}</div><div class="stop-event-duration">${compactDuration(ev.durationSeconds)}</div><div class="stop-event-reason">${escapeHtml(ev.reason||(ev.isOpen?"Активний STOP":"STOP"))}</div></div>`).join(""):`<div class="stop-detail-empty">За цей місяць STOP-подій ще не записано.</div>`;
+          $("#stopModalBody").innerHTML=`<div class="stop-detail-kpis"><div class="stop-detail-kpi"><div class="stop-detail-label">STOP сьогодні</div><div class="stop-detail-value">${compactDuration(data.todayTotalSeconds||0)}</div><div class="stop-detail-note">${todayEvents.length} періодів</div></div><div class="stop-detail-kpi"><div class="stop-detail-label">STOP за місяць</div><div class="stop-detail-value">${compactDuration(data.monthTotalSeconds||0)}</div><div class="stop-detail-note">${escapeHtml(monthTitle(data.month))}</div></div><div class="stop-detail-kpi"><div class="stop-detail-label">Кількість STOP</div><div class="stop-detail-value">${Number(data.stopCount||0)}</div><div class="stop-detail-note">за поточний місяць</div></div></div><div class="stop-history-section"><div class="stop-history-heading">Історія за місяць</div><div class="stop-events">${eventRows}</div></div>`;
+        }catch(err){$("#stopModalBody").innerHTML=`<div class="stop-detail-empty">Не вдалося завантажити історію STOP.<br>${escapeHtml(err?.message||"")}</div>`;}
+      }
+
       function showToast(text) {
         const toast = $("#toast");
         toast.textContent = text;
@@ -1422,6 +1472,12 @@
         $("#dateLabel").textContent = now.toLocaleDateString("uk-UA",{weekday:"short",day:"2-digit",month:"short"}).replace(".","");
         $$("[data-start-ms]").forEach(el => el.textContent = timeAgeFromMs(Number(el.dataset.startMs)));
       }
+
+
+      $("#grid").addEventListener("click",e=>{const card=e.target.closest(".restaurant[data-num]");if(card)openStopModal(card.dataset.num);});
+      $("#stopModalClose").addEventListener("click",closeStopModal);
+      $("#stopModalBackdrop").addEventListener("click",e=>{if(e.target===$("#stopModalBackdrop"))closeStopModal();});
+      document.addEventListener("keydown",e=>{if(e.key==="Escape")closeStopModal();});
 
       $("#refreshBtn").addEventListener("click", () => loadData(true));
       $("#searchInput").addEventListener("input", (e) => {
