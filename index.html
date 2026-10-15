@@ -604,7 +604,7 @@
     </section>
 
     <footer class="footer">
-      <span>OPS CONTROL · Internal Operations · BUILD 5.3 · STOP HISTORY</span>
+      <span>OPS CONTROL · Internal Operations · BUILD 5.4 · TIMER FIX</span>
       <span>Auto refresh · 15 sec</span>
     </footer>
   </main>
@@ -806,6 +806,26 @@
           return null;
         }
 
+        // ГОЛОВНЕ ДЖЕРЕЛО ЧАСУ — "Початок проблеми" з Monitoring_Live.
+        // Apps Script віддає його в полі r.time. ISO timestamp містить +00:00,
+        // тому браузер сам коректно переводить UTC у локальний час Kyiv.
+        const sourceStart =
+          parseTimestamp(r.time) ??
+          parseTimestamp(r.messageTime) ??
+          parseTimestamp(r.statusTime);
+
+        if (sourceStart) {
+          const saved = {
+            state: currentState,
+            startedAt: sourceStart,
+            sourceTime: String(r.time || r.messageTime || r.statusTime || ''),
+            updatedAt: Date.now()
+          };
+          try { localStorage.setItem(storageKey, JSON.stringify(saved)); } catch (_) {}
+          return sourceStart;
+        }
+
+        // Fallback лише коли джерело не має timestamp.
         let saved = null;
         try {
           saved = JSON.parse(localStorage.getItem(storageKey) || "null");
@@ -813,25 +833,11 @@
           saved = null;
         }
 
-        // Якщо колір/стан змінився — починаємо НОВИЙ таймер.
         if (!saved || saved.state !== currentState) {
-          const candidate =
-            parseTimestamp(r.messageTime) ??
-            parseTimestamp(r.statusTime) ??
-            Date.now();
-
-          saved = {
-            state: currentState,
-            startedAt: candidate,
-            updatedAt: Date.now()
-          };
-
-          try { localStorage.setItem(storageKey, JSON.stringify(saved)); } catch (_) {}
-          return saved.startedAt;
+          saved = { state: currentState, startedAt: Date.now(), updatedAt: Date.now() };
+        } else {
+          saved.updatedAt = Date.now();
         }
-
-        // Той самий статус: таймер продовжується, навіть після перезавантаження сторінки.
-        saved.updatedAt = Date.now();
         try { localStorage.setItem(storageKey, JSON.stringify(saved)); } catch (_) {}
         return Number(saved.startedAt) || Date.now();
       }
@@ -845,6 +851,12 @@
         return `${min} хв`;
       }
 
+      function formatSourceTime(value) {
+        const ms = parseTimestamp(value);
+        if (!ms) return String(value || "");
+        return new Date(ms).toLocaleTimeString("uk-UA", {hour:"2-digit", minute:"2-digit"});
+      }
+
       function cardHtml(r) {
         const deliveryBar = thresholdWidth(r.deliveryMin, 30, 60);
         const pickupBar = thresholdWidth(r.pickupMin, 15, 45);
@@ -852,8 +864,8 @@
         const timerStartMs = (r.risk > 1 || r.isAlarm || r.isStop) ? resolveStateTimer(r) : null;
         const elapsed = timerStartMs ? timeAgeFromMs(timerStartMs) : "";
         const freshLabel = r.messageTime
-          ? `статус ${escapeHtml(r.messageTime)}`
-          : (r.time ? `дані ${escapeHtml(r.time)}` : "актуальні дані");
+          ? `статус ${escapeHtml(formatSourceTime(r.messageTime))}`
+          : (r.time ? `початок ${escapeHtml(formatSourceTime(r.time))}` : "актуальні дані");
 
         return `
           <article class="restaurant ${r.uiClass}" data-num="${escapeHtml(r.num)}">
